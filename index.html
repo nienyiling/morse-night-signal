@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>夜航電報 · NIGHT SIGNAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea-0:#03100B;        /* 雷達屏最深 */
+    --sea-1:#06190F;         /* 面板 */
+    --sea-2:#0E2E20;         /* 格線/分隔 */
+    --steel:#1C5238;         /* 磷光鋼線 */
+    --steel-dim:#5E8E78;     /* 次要文字 */
+    --ink:#CDEBD9;           /* 主文字·磷光白綠 */
+    --dit:#54F3A0;           /* 短訊號·磷光綠 */
+    --dah:#FFB23E;           /* 長訊號·雷達琥珀 */
+    --dah-hot:#FF6A3D;       /* 按很久·過熱 */
+    --danger:#FF5A4D;        /* 危急 */
+    --phos:#54F3A0;          /* 磷光主色 */
+    --phos-hi:#9CFFCB;       /* 磷光高光 */
+    --display:"Oswald", system-ui, "Noto Sans TC", sans-serif;
+    --mono:ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --glow:0 0 6px rgba(84,243,160,.45);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; color:var(--ink); font-family:var(--display);
+    background:
+      radial-gradient(120% 80% at 50% 120%, rgba(255,178,62,.05), transparent 55%),
+      radial-gradient(100% 70% at 50% 45%, rgba(84,243,160,.06), transparent 62%),
+      linear-gradient(180deg, var(--sea-0) 0%, #04150D 60%, #020c08 100%);
+    overflow:hidden; user-select:none;
+  }
+  /* CRT 掃描線（細橫線）+ 微弱磷光格線 */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9; opacity:.5;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(84,243,160,.04) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(0deg, rgba(84,243,160,.04) 0 1px, transparent 1px 44px);
+  }
+  /* CRT 暈影 / 螢幕弧度 */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:10;
+    background:radial-gradient(120% 100% at 50% 50%, transparent 58%, rgba(0,0,0,.55) 100%);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    body{animation:flicker 5s infinite steps(60);}
+    @keyframes flicker{0%,97%,100%{opacity:1;} 98%{opacity:.97;} 99%{opacity:.99;}}
+  }
+  .app{position:fixed; inset:0; display:flex; align-items:center; justify-content:center;}
+  .screen{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; padding:24px;
+    width:100%; max-width:620px; margin:0 auto; left:0; right:0;
+  }
+  .screen.on{display:flex; animation:fade .4s ease both;}
+  #title{justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:30px; padding-bottom:34px;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.32em; text-transform:uppercase; color:var(--phos); text-shadow:var(--glow);}
+  h1{font-weight:700; font-size:clamp(40px,12vw,76px); letter-spacing:.04em; margin:.1em 0 0; line-height:.92; color:var(--phos-hi); text-shadow:0 0 12px rgba(84,243,160,.5), 0 0 34px rgba(84,243,160,.25);}
+  .sub{font-family:var(--mono); color:var(--dit); letter-spacing:.3em; font-size:13px; margin-top:10px; text-shadow:var(--glow);}
+  p.lede{color:var(--steel-dim); font-size:16px; line-height:1.7; max-width:30em; text-align:center; font-weight:400;}
+
+  /* 摩斯短/長標記，作為標題下的識別記號（真的代表 S O S 的節奏，不是裝飾） */
+  .sosmark{display:flex; gap:14px; margin:22px 0 26px; align-items:center;}
+  .sosmark .grp{display:flex; gap:6px;}
+  .sosmark i{display:block; height:8px; border-radius:4px; background:var(--dit); opacity:.85;}
+  .sosmark .dit{width:8px;}
+  .sosmark .dah{width:24px; background:var(--dah);}
+
+  .btn{
+    font-family:var(--display); font-weight:600; font-size:18px; letter-spacing:.06em;
+    color:var(--sea-0); background:var(--dah); border:none; border-radius:2px;
+    padding:14px 34px; cursor:pointer; margin-top:8px;
+    box-shadow:0 0 0 1px rgba(255,178,62,.4), 0 8px 30px rgba(255,122,60,.25);
+    transition:transform .12s ease, box-shadow .2s ease;
+  }
+  .btn:hover{transform:translateY(-1px); box-shadow:0 0 0 1px rgba(255,178,62,.6), 0 10px 38px rgba(255,122,60,.4);}
+  .btn:active{transform:translateY(1px);}
+  .btn.ghost{background:transparent; color:var(--steel-dim); box-shadow:inset 0 0 0 1px var(--steel);}
+  .btn.ghost:hover{color:var(--ink); box-shadow:inset 0 0 0 1px var(--dit);}
+  .btn:focus-visible{outline:2px solid var(--dit); outline-offset:3px;}
+  .row{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; justify-content:center;}
+
+  /* 故事卡 */
+  .story{max-width:28em; text-align:center;}
+  .story .who{font-family:var(--mono); color:var(--dah); letter-spacing:.28em; font-size:12px; text-transform:uppercase;}
+  .story h2{font-weight:600; font-size:clamp(22px,6vw,30px); margin:.4em 0 .2em;}
+  .story p{color:var(--steel-dim); font-size:16px; line-height:1.75; font-weight:400;}
+
+  /* ---- 遊戲畫面 ---- */
+  #play{justify-content:flex-start; padding-top:max(14px, env(safe-area-inset-top));}
+  .hud{width:100%; max-width:560px; display:flex; align-items:center; justify-content:space-between; font-family:var(--mono); font-size:13px; color:var(--steel-dim); letter-spacing:.12em;}
+  .hud .stage{color:var(--dah);}
+  .hud .right{display:flex; gap:18px; align-items:center;}
+  .hearts{letter-spacing:2px; color:var(--danger); font-size:16px; min-width:60px; text-align:right;}
+  .score{color:var(--ink);}
+  .combo{color:var(--dit); font-size:12px;}
+
+  .prompt{margin-top:6px; text-align:center; min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .target{font-weight:700; font-size:clamp(72px,22vw,128px); line-height:1; letter-spacing:.02em; text-shadow:0 0 40px rgba(84,243,160,.25);}
+  .target.word{font-size:clamp(36px,11vw,68px); letter-spacing:.14em;}
+  .hint{font-family:var(--mono); color:var(--steel-dim); font-size:14px; letter-spacing:.18em; margin-top:6px; height:20px;}
+  .hint .reveal{color:var(--dah); font-size:21px; letter-spacing:.24em; text-shadow:0 0 8px rgba(255,178,62,.4);}
+  .beatcue{color:var(--phos); opacity:.7; font-size:13px; letter-spacing:.1em; white-space:nowrap;}
+  .exitfree{display:none; position:absolute; top:14px; right:14px; z-index:6; width:40px; height:40px;
+    border:1px solid var(--steel); border-radius:50%; background:rgba(6,18,26,.7); color:var(--steel-dim);
+    font-size:17px; line-height:1; cursor:pointer; transition:color .12s, border-color .12s;}
+  .exitfree:hover{color:var(--ink); border-color:var(--phos);}
+  #play.free .exitfree{display:block;}
+  .cbSearch{width:100%; max-width:420px; margin-top:14px;}
+  #codebook{justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:26px; padding-bottom:30px;}
+  #codebook .eyebrow, #codebook h1, .cbSearch, .cbResult, .cbTable, #cbBack{flex:0 0 auto;}
+  .dailyBody{display:flex; flex-direction:column; align-items:center; gap:16px; margin-top:22px; text-align:center; max-width:420px;}
+  .dailyBody .dbig{font-family:var(--display); font-size:clamp(20px,6vw,28px); color:var(--phos-hi); text-shadow:0 0 10px rgba(84,243,160,.35);}
+  .dailyBody .dsub{font-family:var(--mono); font-size:14px; letter-spacing:.08em; color:var(--steel-dim); line-height:1.6;}
+  .dailyBody .dstreak{font-family:var(--mono); font-size:15px; letter-spacing:.1em; color:var(--dah); border:1px solid rgba(255,178,62,.4); border-radius:4px; padding:8px 16px; background:rgba(255,178,62,.06);}
+  .dailyBody .dword{font-family:var(--mono); font-size:20px; letter-spacing:.2em; color:var(--phos);}
+  .dailyBody .dcode{font-family:var(--mono); font-size:16px; letter-spacing:.16em; color:var(--dah); margin-top:2px;}
+  #cbInput{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:18px; letter-spacing:.1em;
+    text-align:center; color:var(--ink); background:rgba(6,18,26,.7); border:1px solid var(--steel);
+    border-radius:4px; padding:12px 14px;}
+  #cbInput:focus{outline:none; border-color:var(--phos); box-shadow:0 0 0 1px rgba(84,243,160,.5);}
+  .cbResult{width:100%; max-width:420px; min-height:8px; margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+  .cbResult .cbchip{display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 9px; border:1px solid var(--sea-2); border-radius:4px; background:rgba(84,243,160,.05);}
+  .cbResult .cbchip b{font-family:var(--display); font-weight:700; font-size:18px; color:var(--phos-hi);}
+  .cbResult .cbchip i{font-style:normal; font-family:var(--mono); font-size:15px; color:var(--dah); letter-spacing:.14em;}
+  .cbResult .cbsp{width:12px;}
+  .cbResult .cbunk{align-self:center; color:var(--steel-dim); font-family:var(--mono); font-size:18px;}
+  .cbTable{width:100%; max-width:440px; margin-top:20px; display:grid; grid-template-columns:repeat(2,1fr); gap:0 20px;}
+  .cbTable .cbrow{display:flex; align-items:baseline; justify-content:space-between; padding:7px 4px; border-bottom:1px solid var(--sea-2);}
+  .cbTable .cbrow .k{font-family:var(--display); font-weight:700; font-size:16px; color:var(--ink); width:1.6em;}
+  .cbTable .cbrow .v{font-family:var(--mono); font-size:15px; color:var(--phos); letter-spacing:.14em;}
+  .hint .lockprog{color:var(--steel-dim); font-family:var(--mono); font-size:13px; letter-spacing:.2em;}
+
+  .stage-canvas{position:relative; width:100%; max-width:560px; aspect-ratio:1/.62;}
+  canvas{position:absolute; inset:0; width:100%; height:100%;}
+
+  /* 讀出面板：把玩家敲的東西即時印成 ·／－ */
+  .readout{font-family:var(--mono); font-size:30px; letter-spacing:.18em; color:var(--dit); height:42px; margin-top:2px; text-shadow:var(--glow);}
+  .readout .ok{color:var(--dah);}
+  .readout .bad{color:var(--danger);}
+
+  /* 劇情引子／回應：嵌在關卡裡的橫幅，不是整頁故事卡 */
+  .beat{
+    position:absolute; left:50%; top:18%;
+    transform:translateX(-50%) translateY(-6px);
+    max-width:30em; width:86%; text-align:center; pointer-events:none;
+    font-family:var(--display); font-weight:400; font-size:clamp(16px,4.4vw,20px);
+    line-height:1.6; color:var(--ink); background:rgba(6,18,26,.82);
+    border:1px solid var(--steel); border-radius:3px; padding:14px 18px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5); opacity:0; transition:opacity .35s ease, transform .35s ease; z-index:5;
+  }
+  .beat.on{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+
+  /* 電鍵 */
+  .keywrap{margin-top:auto; padding-bottom:max(20px, env(safe-area-inset-bottom)); width:100%; display:flex; flex-direction:column; align-items:center; gap:8px;}
+  .key{
+    width:min(78vw,360px); height:78px; border-radius:6px; cursor:pointer;
+    font-family:var(--display); font-weight:600; letter-spacing:.18em; font-size:16px;
+    color:var(--ink); background:linear-gradient(180deg,#13323f,#0c2330);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 -3px 0 rgba(0,0,0,.4), 0 10px 24px rgba(0,0,0,.45);
+    border:1px solid var(--steel); display:flex; align-items:center; justify-content:center;
+    transition:transform .05s ease, box-shadow .08s ease, background .08s ease;
+    touch-action:none;
+  }
+  .key.down{transform:translateY(3px); background:linear-gradient(180deg,#1c4658,#123545); box-shadow:inset 0 2px 8px rgba(0,0,0,.5), 0 0 30px rgba(255,178,62,.35); color:var(--dah);}
+  .key:focus-visible{outline:2px solid var(--dit); outline-offset:3px;}
+  .keytip{font-family:var(--mono); font-size:11px; color:var(--steel-dim); letter-spacing:.16em;}
+
+  /* 倒數條（Boss） */
+  .timer{width:min(78vw,360px); height:5px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; margin-bottom:2px;}
+  .timer > i{display:block; height:100%; width:100%; background:linear-gradient(90deg,var(--dah),var(--danger)); transform-origin:left; transition:transform .06s linear;}
+  .timer.hide{visibility:hidden;}
+
+  /* 結果＋排行榜 */
+  .scoreBig{font-weight:700; font-size:clamp(54px,16vw,96px); color:var(--dah); line-height:1; text-shadow:0 0 40px rgba(255,178,62,.3);}
+  .verdict{font-family:var(--mono); letter-spacing:.2em; color:var(--steel-dim); margin-top:6px;}
+  .nameform{display:flex; gap:10px; margin-top:22px; align-items:center;}
+  .nameform input{
+    font-family:var(--mono); font-size:16px; color:var(--ink); background:var(--sea-0);
+    border:1px solid var(--steel); border-radius:2px; padding:12px 14px; width:200px; letter-spacing:.08em;
+  }
+  .nameform input:focus{outline:none; border-color:var(--dit); box-shadow:0 0 0 2px rgba(84,243,160,.25);}
+  .board{width:100%; max-width:380px; margin-top:18px; border-top:1px solid var(--sea-2);}
+  .board .r{display:flex; align-items:baseline; justify-content:space-between; padding:9px 4px; border-bottom:1px solid var(--sea-2); font-family:var(--mono); font-size:14px;}
+  .board .r .rk{color:var(--steel-dim); width:2.2em;}
+  .board .r .nm{flex:1; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0 8px;}
+  .board .r .sc{color:var(--dah);}
+  .board .r.me{background:rgba(255,178,62,.08);}
+  .board .r.me .nm{color:var(--dah);}
+  .board .empty{color:var(--steel-dim); font-family:var(--mono); font-size:13px; padding:16px 4px; text-align:center;}
+  .note{font-family:var(--mono); font-size:11px; color:var(--steel-dim); margin-top:14px; max-width:30em; text-align:center; line-height:1.6;}
+
+  /* 解碼關：選項列 */
+  .decode{margin-top:auto; padding-bottom:max(20px, env(safe-area-inset-bottom)); width:100%; display:flex; flex-direction:column; align-items:center; gap:12px;}
+  .decode .replaySig{padding:8px 18px; font-size:14px;}
+  .choices{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:360px;}
+  .choices .ch{
+    width:64px; height:64px; border-radius:8px; cursor:pointer;
+    font-family:var(--display); font-weight:700; font-size:30px; color:var(--ink);
+    background:linear-gradient(180deg,#13323f,#0c2330); border:1px solid var(--steel);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.4);
+    transition:transform .08s ease, border-color .12s ease, background .12s ease;
+  }
+  .choices .ch:hover:not(:disabled){transform:translateY(-1px); border-color:var(--dit);}
+  .choices .ch:active:not(:disabled){transform:translateY(1px);}
+  .choices .ch:disabled{opacity:.45; cursor:default;}
+  .choices .ch:focus-visible{outline:2px solid var(--dit); outline-offset:2px;}
+  .choices .ch.ok{border-color:var(--dah); background:linear-gradient(180deg,#3a3417,#241a08); color:var(--dah);}
+  .choices .ch.bad{border-color:var(--danger); color:var(--danger);}
+  .soundHint{
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--dit);
+    margin:16px 0 4px; padding:8px 14px; text-align:center; line-height:1.5; max-width:30em;
+    border:1px solid rgba(84,243,160,.28); border-radius:3px; background:rgba(84,243,160,.06);
+  }
+  .langbar{position:fixed; left:10px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:7px; margin:0; z-index:8;}
+  .langbar .lang{
+    font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--steel-dim);
+    background:rgba(6,18,26,.6); border:1px solid var(--steel); border-radius:3px; padding:6px 9px; cursor:pointer;
+    text-align:center; transition:color .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .langbar .lang:hover{color:var(--ink); border-color:var(--phos);}
+  .langbar .lang.on{color:var(--sea-0); background:var(--phos); border-color:var(--phos); font-weight:700;}
+
+  /* 選關清單 */
+  .chapterList{width:100%; max-width:420px; margin-top:8px; display:flex; flex-direction:column; gap:10px;}
+  .chapterList .item{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+    font-family:var(--display); font-size:16px; letter-spacing:.04em; color:var(--ink);
+    background:linear-gradient(180deg,#13323f,#0c2330); border:1px solid var(--steel);
+    border-radius:4px; padding:14px 16px; cursor:pointer;
+    transition:transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .chapterList .item:hover:not(.locked){transform:translateY(-1px); border-color:var(--dah); box-shadow:0 6px 20px rgba(255,178,62,.18);}
+  .chapterList .item:focus-visible{outline:2px solid var(--dit); outline-offset:2px;}
+  .chapterList .item .ix{font-family:var(--mono); font-size:12px; color:var(--dah); min-width:2.4em;}
+  .chapterList .item .nm{flex:1;}
+  .chapterList .item .st{font-family:var(--mono); font-size:13px; color:var(--steel-dim);}
+  .chapterList .item.locked{opacity:.5; cursor:not-allowed; color:var(--steel-dim);}
+  .chapterList .item.cleared{border-color:rgba(255,178,62,.4);}
+  .chapterList .item.cleared .st{color:var(--dah);}
+
+  /* 留言板 */
+  .msgList{width:100%; max-width:440px; margin-top:6px; max-height:34vh; overflow-y:auto; border-top:1px solid var(--sea-2);}
+  .msgList .m{padding:10px 4px; border-bottom:1px solid var(--sea-2);}
+  .msgList .m .hd{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-family:var(--mono); font-size:11px;}
+  .msgList .m .hd .nm{color:var(--dah); letter-spacing:.04em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .msgList .m .hd .tm{color:var(--steel-dim); flex-shrink:0;}
+  .msgList .m .tx{color:var(--ink); font-family:var(--display); font-size:15px; line-height:1.5; margin-top:3px; word-break:break-word;}
+  .msgList .empty{color:var(--steel-dim); font-family:var(--mono); font-size:13px; padding:16px 4px; text-align:center;}
+  .msgForm{width:100%; max-width:440px; display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  .msgForm input{
+    font-family:var(--mono); font-size:14px; color:var(--ink); background:var(--sea-0);
+    border:1px solid var(--steel); border-radius:2px; padding:11px 12px; letter-spacing:.04em;
+  }
+  .msgForm #msgName{width:120px; flex-shrink:0;}
+  .msgForm #msgText{flex:1; min-width:160px;}
+  .msgForm input:focus{outline:none; border-color:var(--dit); box-shadow:0 0 0 2px rgba(84,243,160,.22);}
+  .msgForm .btn{padding:11px 20px; font-size:15px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .screen.on{animation:none;}
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 標題 -->
+  <section class="screen on" id="title">
+    <div class="eyebrow">Morse rescue · 邊敲邊學</div>
+    <h1>夜航電報</h1>
+    <div class="sub">N I G H T &nbsp; S I G N A L</div>
+    <div class="sosmark" aria-hidden="true">
+      <span class="grp"><i class="dit"></i><i class="dit"></i><i class="dit"></i></span>
+      <span class="grp"><i class="dah"></i><i class="dah"></i><i class="dah"></i></span>
+      <span class="grp"><i class="dit"></i><i class="dit"></i><i class="dit"></i></span>
+    </div>
+    <p class="lede">海上的夜裡，無線電是你唯一的聲音。<br>握住電鍵，把求救訊號敲出去——摩斯電碼，會在你手裡慢慢長出來。</p>
+    <div class="note" id="playsLine" style="display:none"></div>
+    <div class="soundHint" id="soundHint">提示：戴上耳機或開喇叭——聲音是這個遊戲手感的一半。</div>
+    <div class="row">
+      <button class="btn" id="startBtn">開始</button>
+      <button class="btn ghost" id="chaptersBtn">選擇章節</button>
+      <button class="btn ghost" id="boardBtn">排行榜</button>
+    </div>
+    <button class="btn ghost" id="freeBtn" style="display:none; margin-top:10px">自由複習</button>
+    <button class="btn ghost" id="codebookBtn" style="margin-top:10px">摩斯密碼表</button>
+    <button class="btn ghost" id="dailyBtn" style="margin-top:10px">每日單字</button>
+    <div class="langbar" id="langbar">
+      <button class="lang" data-lang="zh">中文</button>
+      <button class="lang" data-lang="en">EN</button>
+      <button class="lang" data-lang="ja">日本語</button>
+    </div>
+  </section>
+
+  <!-- 故事卡 -->
+  <section class="screen" id="story">
+    <div class="story">
+      <div class="who" id="storyWho">求救日誌</div>
+      <h2 id="storyTitle"></h2>
+      <p id="storyText"></p>
+    </div>
+    <button class="btn" id="storyNext">繼續</button>
+  </section>
+
+  <!-- 遊戲 -->
+  <section class="screen" id="play">
+    <div class="beat" id="beat"></div>
+    <button class="exitfree" id="exitFree" aria-label="跳出">✕</button>
+    <div class="hud">
+      <div class="stage" id="hudStage">建立通訊</div>
+      <div class="right">
+        <span class="combo" id="hudCombo"></span>
+        <span class="score" id="hudScore">0</span>
+        <span class="hearts" id="hudHearts"></span>
+      </div>
+    </div>
+
+    <div class="prompt">
+      <div class="target" id="target">E</div>
+      <div class="hint" id="hint"></div>
+    </div>
+
+    <div class="stage-canvas">
+      <canvas id="cv"></canvas>
+    </div>
+
+    <div class="readout" id="readout"></div>
+
+    <div class="keywrap" id="keywrap">
+      <div class="timer hide" id="timer"><i id="timerBar"></i></div>
+      <div class="key" id="key" tabindex="0" role="button" aria-label="電鍵，按住發訊">按住電鍵</div>
+      <div class="keytip">用滑鼠／手指按住，或長按空白鍵</div>
+    </div>
+
+    <div class="decode" id="decode" style="display:none">
+      <button class="btn ghost replaySig" id="replaySig">再聽一次</button>
+      <div class="choices" id="choices"></div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section class="screen" id="result">
+    <div class="eyebrow" id="resultEyebrow">RESCUE</div>
+    <div class="scoreBig" id="finalScore">0</div>
+    <div class="verdict" id="verdict"></div>
+    <div class="nameform">
+      <input id="nameInput" maxlength="12" placeholder="輸入暱稱" autocomplete="off">
+      <button class="btn" id="saveBtn">上榜</button>
+    </div>
+    <div class="board" id="resultBoard"></div>
+    <div class="row">
+      <button class="btn ghost" id="replayBtn">再來一次</button>
+      <button class="btn ghost" id="freeBtnR" style="display:none">自由複習</button>
+    </div>
+    <div class="note" id="boardNote"></div>
+  </section>
+
+  <!-- 每日單字（純前端，日期種子，每天一字） -->
+  <section class="screen" id="daily">
+    <div class="eyebrow" id="dailyEyebrow">DAILY WORD</div>
+    <h1 style="font-size:clamp(28px,8vw,46px)" id="dailyTitle">每日單字</h1>
+    <div class="dailyBody" id="dailyBody"></div>
+    <button class="btn ghost" id="dailyBack" style="margin-top:22px">返回</button>
+  </section>
+
+  <!-- 摩斯密碼表 + 查詢 -->
+  <section class="screen" id="codebook">
+    <div class="eyebrow" id="cbEyebrow">MORSE CODE</div>
+    <h1 style="font-size:clamp(28px,8vw,46px)" id="cbTitle">摩斯密碼表</h1>
+    <div class="cbSearch">
+      <input id="cbInput" maxlength="40" placeholder="輸入文字查電碼…" autocomplete="off" autocapitalize="characters">
+    </div>
+    <div class="cbResult" id="cbResult"></div>
+    <div class="cbTable" id="cbTable"></div>
+    <button class="btn ghost" id="cbBack" style="margin:18px 0 4px">返回</button>
+  </section>
+
+  <!-- 純排行榜 -->
+  <section class="screen" id="boardScreen">
+    <div class="eyebrow">Leaderboard</div>
+    <h1 style="font-size:clamp(30px,9vw,52px)">排行榜</h1>
+    <div class="board" id="pureBoard"></div>
+    <button class="btn ghost" id="boardBack" style="margin-top:20px">返回</button>
+    <div class="note" id="boardNote2"></div>
+  </section>
+
+  <!-- 選擇章節 -->
+  <section class="screen" id="chapters">
+    <div class="eyebrow" id="chaptersEyebrow">SELECT CHAPTER</div>
+    <h1 style="font-size:clamp(30px,9vw,52px)" id="chaptersTitle">選擇章節</h1>
+    <div class="chapterList" id="chapterList"></div>
+    <button class="btn ghost" id="chaptersBack" style="margin-top:20px">返回</button>
+    <div class="note" id="chaptersNote"></div>
+  </section>
+
+  <!-- 每章留言板 -->
+  <section class="screen" id="messages">
+    <div class="eyebrow" id="msgEyebrow">LOGBOOK</div>
+    <h1 id="msgTitle" style="font-size:clamp(28px,8vw,46px)">留言板</h1>
+    <div class="msgList" id="msgList"></div>
+    <div class="msgForm">
+      <input id="msgName" maxlength="12" placeholder="暱稱" autocomplete="off">
+      <input id="msgText" maxlength="120" placeholder="留一句話給後來的人…" autocomplete="off">
+      <button class="btn" id="msgPost">留言</button>
+    </div>
+    <div class="note" id="msgStatus"></div>
+    <button class="btn ghost" id="msgContinue" style="margin-top:6px">繼續</button>
+  </section>
+
+  <!-- 闖關失敗 -->
+  <section class="screen" id="fail">    <div class="story">
+      <div class="who" id="failWho"></div>
+      <h2 id="failTitle"></h2>
+      <p id="failText"></p>
+    </div>
+    <div class="row">
+      <button class="btn" id="retryBossBtn" style="display:none">再挑戰一次</button>
+      <button class="btn ghost" id="retryChapterBtn">再試一次</button>
+      <button class="btn ghost" id="toTitleBtn">回標題</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   夜航電報 · Morse rescue 雛形
+   單檔、純前端、Web Audio 即時合成、Canvas 光圈。
+   時間比例照真實摩斯（dah = 3×dit），學到的能轉移到真摩斯。
+   ============================================================ */
+
+// ---- 時間常數（學習者步調）----
+const DIT = 220;                 // 一個時間單位 (ms)
+const DAH = DIT * 3;             // 長訊號理想時長
+const BOUND = DIT * 2;           // 短/長分界 (440ms)：玩家按多久算長/短。固定不隨章變，肌肉記憶才穩。
+const CLEAN_DIT = [70, 360];     // 漂亮的 dit 區間 → 額外加分
+const CLEAN_DAH = [500, 1100];   // 漂亮的 dah 區間
+
+// 完整摩斯表（之後的章直接引用，不必再改邏輯）
+const MORSE = {
+  E:".", T:"-", I:"..", M:"--", A:".-", N:"-.", S:"...", O:"---",
+  R:".-.", U:"..-", D:"-..", K:"-.-", W:".--", G:"--.",
+  H:"....", V:"...-", F:"..-.", L:".-..", P:".--.", B:"-...",
+  C:"-.-.", J:".---", Q:"--.-", X:"-..-", Y:"-.--", Z:"--..",
+  "0":"-----","1":".----","2":"..---","3":"...--","4":"....-",
+  "5":".....","6":"-....","7":"--...","8":"---..","9":"----."
+};
+
+// ================= i18n：所有玩家可見文字都走語言包 =================
+// 加語言＝補一份 PACKS.xx，玩法零改動。LANG 之後接 UI 切換即可。
+let LANG = "zh";
+const PACKS = {
+  zh: {
+    ui: {
+      tagline:"Morse rescue · 邊敲邊學", start:"開始", board:"排行榜", cont:"繼續",
+      lede:"海上的夜裡，無線電是你唯一的聲音。<br>握住電鍵，把求救訊號敲出去——摩斯電碼，會在你手裡慢慢長出來。",
+      keyIdle:"按住電鍵", keyTip:"用滑鼠／手指按住，或長按空白鍵",
+      listen:"聽好…", yourTurn:"換你", retryShort:"要短一點", retryLong:"要長一點",
+      listenPrompt:"聽訊號——這是哪個字母？", replaySig:"再聽一次", listenAgain:"再聽一次，別急",
+      good:"好", received:"收到", fast:"迅速！", tooSlow:"太慢了", wantShort:"該是短的", wantLong:"該是長的", tapAlong:"照著敲：", tapToHear:"點一下播放",
+      loading:"載入中…", uploading:"上傳中…", empty:"還沒有人上榜。當第一個。",
+      enterName:"輸入暱稱", saveScore:"上榜", replay:"再來一次", freePractice:"自由複習", codebook:"摩斯密碼表", cbPlaceholder:"輸入文字查電碼…", daily:"每日單字", dailyDone:"今天完成，明天再來", dailyStreak:"連續 {n} 天", dailyTodayWas:"今天的單字是", back:"返回",
+      rescueDone:"RESCUE COMPLETE · 獲救", lost:"TRANSMISSION LOST · 中斷",
+      verdictWin:"你把自己敲出了黑夜", verdictLose:"再敲一次，撐到天亮",
+      retryChapter:"再試一次", toTitle:"回標題",
+      retryBoss:"再挑戰一次", retryPractice:"重新練習整關",
+      challengers:"已有 {n} 人來過這片海",
+      soundHint:"提示：戴上耳機或開喇叭——聲音是這個遊戲手感的一半。",
+      selectChapter:"選擇章節", chapterLocked:"未解鎖", chapterCleared:"已通過", chapterPlay:"進入",
+      chapterHint:"通過一章就會解鎖下一章，下次可從這裡直接接著玩。",
+      msgBoard:"留言板", msgNamePh:"暱稱", msgTextPh:"留一句話給後來的人…",
+      msgPost:"留言", msgContinue:"繼續", msgEmpty:"還沒有人在這裡留言。留下第一句。",
+      msgPosting:"送出中…", msgPosted:"留言已送出 ✦", msgFailLoad:"暫時讀不到留言（連線問題），你仍可繼續。",
+      msgFailPost:"送不出去，請稍後再試。", msgHint:"破關到最後才會留下分數；這裡是給每一章留個記號的地方。",
+      boardNoteResult:"和全世界的電報員比分數。連不上時會改存在這台裝置。",
+      boardNoteOffline:"（暫時連不上全球榜，先存在這台裝置；恢復連線後再上榜即可。）",
+      boardNotePure:"全球排行榜。連不上時顯示本機快取。",
+      defaultName:"無名電報員",
+      sendThis:"敲出：", spell:"拼出：",
+      bossWho:"！求救", bossTitle:"回應燈號",
+      loseTitle:"訊號中斷", loseText:"燈號太快、手沒跟上，連線斷了。但你已經學會了——再來一次，撐到救援抵達。"
+    },
+    // 每章四拍劇情（學引子／熟引子／用引子＋回應／遞給下章的鉤子），與關卡結構分離
+    story: {
+      ch0: {
+        name:"序章 · 進水了",
+        open:{ who:"求救日誌 · 第一夜", title:"進水了", text:"深夜，你的小船觸礁進水。引擎死了，但無線電還有電。你不會摩斯電碼——但今晚，你得學會它。" },
+        teach:"短按是「滴」＝ E，長按是「答」＝ T。看光圈：按久了會從青翻成琥珀。",
+        drill:"沒有示範了。看到字母，自己敲出來。",
+        useIntro:"先把這兩個訊號連起來送出去。",
+        useResp:"訊號送出了。海面那頭，安靜了一下——然後，遠處亮起一點光。",
+        boss:"一艘船朝你閃燈呼叫。看懂它閃的是短還是長，在燈滅前照樣回敲。撐住，讓它知道你還活著。",
+        clear:{ who:"通訊建立", title:"它看見你了", text:"對方的燈穩穩回亮了一下。你還活著——而且，你們開始能說話了。只是它回得太快，幾乎在你敲完之前，像早就認得這兩個訊號。大概是你太累了。" },
+        fail:{ who:"求救日誌", title:"亂了", text:"訊號發得七零八落，連你自己都認不出敲了什麼。海面一片黑，沒有人會這樣讀懂你。深呼吸，從頭再來。" },
+        failBoss:{ who:"訊號中斷", title:"它走了", text:"你沒跟上那盞燈的節奏。光一明一滅，然後沉回黑暗裡。它走了——但你還在。再叫一次，別讓它走遠。" }
+      },
+      ch1: {
+        name:"第一章 · 報出我是誰",
+        open:{ who:"求救日誌 · 仍是第一夜", title:"它又閃了", text:"那道光再次閃起，這次更長、更複雜——你還讀不懂。要回話，得先學會更多訊號。" },
+        teachA:"兩個新訊號：I 是兩短，M 是兩長。和你會的 E、T 很像，別搞混。",
+        teachB:"再兩個：A 是短長，N 是長短——剛好相反，注意順序。",
+        drill:"全部混在一起練。會卡住的，往往是鏡像的那幾組（A↔N、I↔M）。",
+        listenIntro:"它回話了。這次換你讀——聽訊號，選出你聽到的是哪個字母。",
+        useIntro:"夠了，該說點什麼。報出你是誰——",
+        useResp:"你敲出了第一個真正的詞。對方回敲一長串……結尾夾著一個你還沒學過的訊號：···",
+        boss:"對方開始快速試你：照它閃的回敲，跟上節奏。最後，敲出一個完整的字回去。",
+        clear:{ who:"你有名字了", title:"NAME", text:"你把名字送了出去。那艘船沉默了幾秒，然後一遍遍打著同一個訊號要你學會它——三短，···。那是什麼？（待續）" },
+        fail:{ who:"求救日誌", title:"還不熟", text:"新的訊號還沒長進手裡，你越敲越亂。海面那頭安靜下來，像在等你想清楚。穩住，從頭再來。" },
+        failBoss:{ who:"訊號中斷", title:"慢了半拍", text:"它試得很快，而你的手慢了半拍。光，熄了。再試一次——這次跟上它的節奏。" }
+      },
+      ch2: {
+        name:"第二章 · 第一封 SOS",
+        open:{ who:"求救日誌 · 第二夜", title:"水更高了", text:"水漫過了膝蓋。你需要發出全世界都懂的那串訊號——三短、三長、三短。先學會它的兩個字母。" },
+        teach:"S 是三短 ···，O 是三長 ———。一口氣連著敲，中間別斷。",
+        drill:"和學過的混著練。S 最容易和 I（兩短）搞混——數清楚是幾下。",
+        listenIntro:"對方又發來訊號。這次用聽的——是三短（S）還是三長（O）？選出來。",
+        useIntro:"現在，把它們連起來。這三個字母，是全世界都聽得懂的求救——",
+        useResp:"···———··· 送了出去。海上某處，一束光精準地、毫不遲疑地回敲了同樣三個字——快得，幾乎不像一隻手敲得出來。你眨了眨被海風吹痠的眼。",
+        boss:"它一段一段地閃，試你的反應。跟上節奏，最後把完整的 SOS 穩穩回給它。",
+        clear:{ who:"第一封 SOS", title:"···———···", text:"你發出了生平第一封 SOS。對面的光一次比一次亮，像在說「別怕，我來了」。救援，真的在靠近了。" },
+        fail:{ who:"求救日誌", title:"散了", text:"三短三長散了架，連不成一氣，沒人能從這團亂訊裡讀出求救。深呼吸，再來一次。" },
+        failBoss:{ who:"訊號中斷", title:"沒接上", text:"它閃得快，你的 SOS 沒接上它的拍子，光暗了下去。再試一次——把那三個字，穩穩送出去。" }
+      },
+      ch3: {
+        name:"第三章 · 沿岸電台",
+        open:{ who:"通聯紀錄 · 黎明前", title:"有人收編了你", text:"你的 SOS 被一座沿岸電台接住了。對方開始用更快的訊號跟你說話——要跟上他們，你得再學會六個字母。" },
+        teachA:"R 是 ·—·，U 是 ··—，D 是 —··。三個一組，注意點和線的位置。",
+        teachB:"再三個：K —·—、W ·——、G ——·。K 和 R 很容易反過來，數清楚。",
+        drill:"全部混著練。最會卡的是鏡像那幾組：R↔K、U↔D、W↔G。",
+        listenIntro:"電台發得很快。聽，然後選——這一次靠的是耳朵，不是手。",
+        useIntro:"電台在問話。先回他們最短的兩個字母，讓他們知道你收得到——",
+        useResp:"OK。RADIO。你把自己接進了那張看不見的通訊網。電台那頭的人停了一下，問了一個很怪的問題：「你，是從哪條船上來的？」你發現自己答不上來——你不記得有過一條船。大概是撞擊撞昏了頭。",
+        boss:"風浪變大，電台的訊號斷斷續續。跟上它每一次閃光，最後把你的位置標記敲回去：RADIO。別讓這條線斷了。",
+        clear:{ who:"接上線了", title:"你在網內", text:"訊號穩定下來。沿岸電台確認收到你——你不再是黑暗裡孤單的一點光，你進了那張網。天，快亮了。" },
+        fail:{ who:"通聯紀錄", title:"跟不上", text:"電台的訊號太快，你的手還沒練到家，回敲全亂了套。線斷了。穩住，再接一次。" },
+        failBoss:{ who:"訊號中斷", title:"線斷了", text:"風浪蓋過了訊號，你沒能把位置標記送回去。電台那頭安靜了。再試一次——這次抓緊它的節奏。" }
+      },
+      ch4: {
+        name:"第四章 · 風暴夜",
+        open:{ who:"通聯紀錄 · 風暴", title:"它先到了", text:"救援還沒到，風暴先到了。訊號在雜訊裡忽明忽暗。要在干擾中讀懂彼此，你得再學六個字母。" },
+        teachA:"H 是四短 ····，V 是 ···—，F 是 ··—·。點要數準，差一下就變別的字。",
+        teachB:"再三個：L ·—··、P ·——·、B —···。L 像 R 多一點，B 像 D 多一點。",
+        drill:"在雜訊裡混著練。最會騙人的：H↔S（四短 vs 三短）、B↔V、L↔R。",
+        listenIntro:"風聲蓋住了一半訊號。仔細聽——在雜訊裡，它送的是哪個字母？",
+        useIntro:"趁訊號還在，把最要緊的話砸進風裡——",
+        useResp:"STORM。HELP。奇怪的是，浪一次次打在你身上，你卻不覺得冷、也不覺得累——大概是怕到麻木了。電台那頭拚命回著，要你撐住，再撐一下。",
+        boss:"風暴最猛的時候，電台的光只剩幾下還看得見。死死盯著，把每一下讀回去，最後引那艘船進來：SHIP。",
+        clear:{ who:"風停了", title:"天亮了", text:"風暴過去，海面泛起灰白的光。遠處，一艘船的輪廓正破開晨霧朝你來——你撐過了最長的一夜。" },
+        fail:{ who:"通聯紀錄", title:"被浪蓋過", text:"雜訊太強，你的訊號被風浪整個蓋了過去，沒能穿出去。穩住，再試一次。" },
+        failBoss:{ who:"訊號中斷", title:"船迷航了", text:"你沒能在光滅前把它讀回去，那艘船在霧裡偏了向。再試一次——這次盯緊每一下。" }
+      },
+      ch5: {
+        name:"第五章 · 稀有訊號",
+        open:{ who:"通聯紀錄 · 晨霧", title:"夾層裡的訊號", text:"救援船還在霧裡。但你發現，電台的通訊底下，藏著另一層訊號——更冷、更規律，不太像人發的。要讀懂它，你得學會最後幾個少見的字母。" },
+        teachA:"C —·—·、J ·———、Q ——·—。少見，但它們就躲在那層訊號裡。",
+        teachB:"再三個：X —··—、Y —·——、Z ——··。Y 和 C 很像，數清楚。",
+        drill:"全部混著練。最會騙人的：C↔K、Q↔G、Y↔C。",
+        listenIntro:"那層底下的訊號又來了。聽——它在拼一個你還沒讀全的字。",
+        useIntro:"你忍不住，敲了回去，問那層訊號：你是誰？為什麼一直看著我？",
+        useResp:"WHY。YOU。底下那層訊號停了一拍，然後回給你一串你看得懂、卻不願相信的字：「你，不在任何一艘船的名單上。」你想反駁——可你連自己上的是哪條船，都想不起來。",
+        boss:"霧裡的訊號越來越清楚，像在反覆確認什麼。穩住，把它一段段讀回去，最後讀出它一直送來的那個字：CODE。",
+        clear:{ who:"夾層之下", title:"名單上沒有你", text:"你讀懂了那層訊號的最後一個字。它不是救援頻道——是有人在記錄你。而記錄裡，你不屬於任何已知的船、任何已知的人。晨霧還沒散。" },
+        fail:{ who:"通聯紀錄", title:"讀不透", text:"這幾個訊號太生疏，那層夾層訊號你讀得七零八落，拼不成字。靜下來，再試一次。" },
+        failBoss:{ who:"訊號中斷", title:"它收回去了", text:"你沒能在它消失前讀完，那串冷冷的訊號縮回了夾層裡。再試一次——這次別漏掉任何一下。" }
+      },
+      ch6: {
+        name:"第六章 · 座標與時刻",
+        open:{ who:"通聯紀錄 · 拂曉", title:"報出你的位置", text:"救援船要你的精確座標才能靠近。你得學會數字——0 到 9。報出你在哪、現在幾點。" },
+        teachA:"數字都是五個一組。1 是 ·————，往後每個多一條線：2 ··———、3 ···——、4 ····—、5 ·····。",
+        teachB:"過了 5 換成線開頭：6 —····、7 ——···、8 ———··、9 ————·、0 —————。",
+        drill:"和字母混著練。會騙人的：5↔H、6↔B、9↔0。",
+        listenIntro:"電台報來一串數字。聽清楚是幾——這是要對上的座標。",
+        useIntro:"輪到你了。報出時間，報出你的位置——",
+        useResp:"0300。4705。你把數字送出去。電台那頭安靜了很久，久到你以為斷了線。然後它回來，只重複一個時間：0247——那是它第一次偵測到「你」的時刻。可你記得的，明明是半夜觸礁……兩個時間，對不上。",
+        boss:"救援船要最後確認。盯著它閃的每一個數字讀回去，最後送出它反覆要的那個時間：0247。",
+        clear:{ who:"對上了", title:"0247", text:"你把那個時間讀了回去，電台沉默地確認了。船的引擎聲，第一次清楚地從霧裡傳來——近了。但 0247 這個數字，在你心裡擱著，像一根拔不掉的刺。" },
+        fail:{ who:"通聯紀錄", title:"報錯了", text:"數字一個沒對上，座標就全錯了，船會找不到你。深呼吸，把每一組五下數清楚，再報一次。" },
+        failBoss:{ who:"訊號中斷", title:"座標歪了", text:"你把數字讀錯了，船朝著錯誤的方向偏去。再試一次——這次一個數字都不能差。" }
+      },
+      ch7: {
+        name:"終章 · 第一次心跳",
+        open:{ who:"通聯紀錄 · 日出", title:"光，終於到了", text:"救援船的探照燈掃過海面，落在你身上。就在那一刻，夾層裡那道又冷又規律的訊號猛地漲起來，蓋過了一切——而你發現，你的手，已經跟著它動了起來。" },
+        bossWho:"——", bossTitle:"跟上它",
+        boss:"那訊號越來越快：一短、一長、一短、一長……你不是在讀它。你就是它。跟上每一下，別讓它停下來。",
+        // 揭曉序列（撐過心跳關後，一張張播）
+        reveal:[
+          { who:"一短，一長", title:"那是你的心跳", text:"你終於認出那道訊號了。一短，一長——不是別人發的。那是你的心跳。從你墜進這片海的第一秒起，它就在跳，沒停過。" },
+          { who:"0247", title:"那晚的雷達", text:"凌晨 0247，沿岸雷達掃到兩個無法辨識的脈衝——一短，一長——然後沒入海面。沒有船難。沒有名單。只有你，和你帶來的、不屬於這裡的東西。" },
+          { who:"第一次", title:"你不是被救的人", text:"沒有人觸礁。你不是倖存者。你是那一夜落下來的東西。這整夜學的從來不是求救——是怎麼用他們的語言，第一次，開口說話。" },
+          { who:"首次接觸", title:"該說點什麼了", text:"海平線亮起來。船上的人舉著燈，等你回話。你把這一整夜學會的一切，凝成一個最簡單、也最想說的詞——然後，親手把它敲出去。" }
+        ],
+        sendIntro:"敲出你對這個世界說的第一個詞——",
+        ending:{ who:"首次接觸", title:"HELLO", text:"五個訊號，穩穩地、清楚地，越過海面。船上的燈停了一下，然後，一明一滅，慢慢地、溫柔地，回了你同樣一個詞。\n\n夜，過去了。對話，才剛開始。" },
+        resultEyebrow:"FIRST CONTACT · 首次接觸",
+        resultVerdict:"你用一雙手，向世界說了第一句話",
+        fail:{ who:"——", title:"心跳亂了", text:"你跟丟了那道節奏，它散進雜訊裡。靜下來，重新感覺它——再試一次。" },
+        failBoss:{ who:"——", title:"它停了一下", text:"你沒跟上，心跳漏了一拍，那道訊號黯了下去。但它還在——再試一次，這次，別讓它停。" }
+      }
+    }
+  },
+  en: {"ui":{"lede":"On the night sea, the radio is your only voice.<br>Hold the key and tap out a call for help — Morse code will grow in your hands.","tagline":"Morse rescue · learn as you signal","start":"Start","board":"Leaderboard","cont":"Continue","keyIdle":"Hold the key","keyTip":"Press and hold with mouse / finger, or hold the spacebar","listen":"Listen…","yourTurn":"Your turn","retryShort":"Shorter","retryLong":"Longer","listenPrompt":"Listen — which letter is this?","replaySig":"Play again","listenAgain":"Listen again, take your time","good":"Good","received":"Received","fast":"Fast!","tooSlow":"Too slow","wantShort":"Should be short","wantLong":"Should be long","tapAlong":"Tap along:","tapToHear":"Tap to play","loading":"Loading…","uploading":"Uploading…","empty":"No one on the board yet. Be the first.","enterName":"Enter a name","saveScore":"Submit","replay":"Play again","freePractice":"Free Practice","codebook":"Morse Code","cbPlaceholder":"Type text to look up…","daily":"Daily Word","dailyDone":"Done for today — come back tomorrow","dailyStreak":"{n}-day streak","dailyTodayWas":"Today’s word was","back":"Back","rescueDone":"RESCUE COMPLETE","lost":"TRANSMISSION LOST","verdictWin":"You signaled your way out of the dark","verdictLose":"Signal again — hold on till dawn","retryChapter":"Try again","toTitle":"Title screen","retryBoss":"Retry the challenge","retryPractice":"Practice the whole chapter again","challengers":"{n} people have crossed this sea","soundHint":"Tip: put on headphones or turn up the sound — sound is half of how this game feels.","selectChapter":"Select a chapter","chapterLocked":"Locked","chapterCleared":"Cleared","chapterPlay":"Enter","chapterHint":"Clear a chapter to unlock the next; you can pick up from here next time.","msgBoard":"Message board","msgNamePh":"Name","msgTextPh":"Leave a word for those who come after…","msgPost":"Post","msgContinue":"Continue","msgEmpty":"No messages here yet. Leave the first.","msgPosting":"Sending…","msgPosted":"Message sent ✦","msgFailLoad":"Can't load messages right now (connection issue). You can still continue.","msgFailPost":"Couldn't send. Please try again later.","msgHint":"Scores are saved only if you finish the whole game; this is a place to leave a mark on each chapter.","boardNoteResult":"Compare scores with operators worldwide. Saved to this device when offline.","boardNoteOffline":"(Can't reach the global board right now; saved to this device. Submit again once you're back online.)","boardNotePure":"Global leaderboard. Shows a local cache when offline.","defaultName":"Nameless Operator","sendThis":"Send: ","spell":"Spell: ","bossWho":"！MAYDAY","bossTitle":"Signal back","loseTitle":"Transmission lost","loseText":"The light came too fast and your hand fell behind; the link broke. But you've learned it now — try again, and hold on till rescue arrives."},"story":{"ch0":{"name":"Prologue · Taking On Water","open":{"who":"Distress Log · First Night","title":"Taking On Water","text":"Late at night your small boat hits a reef and floods. The engine is dead, but the radio still has power. You don't know Morse code — but tonight, you have to learn it."},"teach":"A short press is a dit = E; a long press is a dah = T. Watch the ring: hold too long and it turns from green to amber.","drill":"No more demos. See the letter, key it out yourself.","useIntro":"First, send these two signals together.","useResp":"The signal goes out. Out across the water, a pause — then, far off, a single light blinks on.","boss":"A ship is flashing at you. Read whether each flash is short or long, and key it back before the light fades. Hold on — let it know you're alive.","clear":{"who":"Contact Established","title":"It Sees You","text":"The other light blinks back, steady. You're alive — and the two of you can speak now. Only it answers too fast, almost before you finish, as if it already knew these two signals. You must just be tired."},"fail":{"who":"Distress Log","title":"Scrambled","text":"The signal comes out in pieces; even you can't tell what you keyed. The sea is black, and no one could read you like this. Take a breath, start over."},"failBoss":{"who":"Signal Lost","title":"It's Gone","text":"You couldn't keep the light's rhythm. It blinked once, then sank back into the dark. It's gone — but you're still here. Call again, before it drifts too far."}},"ch1":{"name":"Chapter 1 · Say Who I Am","open":{"who":"Distress Log · Still the First Night","title":"It Flashed Again","text":"The light flares again, longer and more complex this time — you can't read it yet. To answer, you'll need to learn more signals."},"teachA":"Two new signals: I is two dits, M is two dahs. They're close to the E and T you know — don't mix them up.","teachB":"Two more: A is dit-dah, N is dah-dit — exact opposites, so mind the order.","drill":"Mix them all together. What trips you up are the mirrored pairs (A↔N, I↔M).","listenIntro":"It answers back. Now it's your turn to read — listen to the signal and pick the letter you hear.","useIntro":"Enough — say something. Tell it who you are —","useResp":"You key out your first real word. The reply comes in a long string… and tucked at the end is a signal you haven't learned yet: ···","boss":"It starts testing you, fast: key back what it flashes, keep the rhythm. At the end, send one whole word in return.","clear":{"who":"You Have a Name","title":"NAME","text":"You sent your name across. The ship goes quiet for a few seconds, then keeps beating out the same signal, over and over, for you to learn — three dits, ···. What is that? (To be continued)"},"fail":{"who":"Distress Log","title":"Not Yet","text":"The new signals haven't settled into your hand, and the more you key the more it tangles. The far side goes quiet, as if waiting for you to sort it out. Steady now, start over."},"failBoss":{"who":"Signal Lost","title":"Half a Beat Late","text":"It tested you fast, and your hand was half a beat behind. The light went out. Try again — this time, keep its rhythm."}},"ch2":{"name":"Chapter 2 · The First SOS","open":{"who":"Distress Log · Second Night","title":"The Water's Higher","text":"The water is over your knees. You need the one string of signals the whole world understands — three short, three long, three short. First, learn its two letters."},"teach":"S is three dits ···, O is three dahs ———. Key each one in a single run, no breaks in the middle.","drill":"Mix it with what you know. S is easiest to confuse with I (two dits) — count exactly how many.","listenIntro":"It sends to you again. This time, by ear — three dits (S) or three dahs (O)? Pick it out.","useIntro":"Now, string them together. These three letters are a cry for help the whole world hears —","useResp":"···———··· goes out. Somewhere on the sea, a beam of light keys the same three letters back — precise, without a flicker of hesitation — so fast it hardly seems keyed by a hand. You blink your salt-stung eyes.","boss":"It flashes in bursts, testing your reactions. Keep the rhythm, then send the whole SOS back to it, steady.","clear":{"who":"The First SOS","title":"···———···","text":"You sent your first SOS ever. The light across the water grows brighter each time, as if saying, \"Don't be afraid, I'm coming.\" Rescue is really drawing near."},"fail":{"who":"Distress Log","title":"Fell Apart","text":"The three-short-three-long fell apart, never holding together; no one could read a cry for help from that mess. Take a breath, again."},"failBoss":{"who":"Signal Lost","title":"Missed the Beat","text":"It flashed fast, your SOS didn't catch its rhythm, and the light dimmed. Try again — send those three letters, steady."}},"ch3":{"name":"Chapter 3 · The Coastal Station","open":{"who":"Comms Log · Before Dawn","title":"Someone Has Taken You In","text":"Your SOS was caught by a coastal station. They start speaking to you in faster signals — to keep up, you'll have to learn six more letters."},"teachA":"R is ·—·, U is ··—, D is —··. Three elements each; mind where the dits and dahs sit.","teachB":"Three more: K —·—, W ·——, G ——·. K and R flip around easily — count carefully.","drill":"Mix them all. The ones that snag you are the mirrors: R↔K, U↔D, W↔G.","listenIntro":"The station sends fast. Listen, then choose — this time it's your ears, not your hand.","useIntro":"The station is asking. Answer with the two shortest letters first, so they know you're reading them —","useResp":"OK. RADIO. You've patched yourself into that unseen network. The person at the station pauses, then asks a strange question: \"Which ship are you from?\" You find you can't answer — you don't remember a ship at all. The crash must have knocked you senseless.","boss":"The sea rises and the station's signal cuts in and out. Catch every flash, then key your position marker back: RADIO. Don't let this line drop.","clear":{"who":"On the Line","title":"You're in the Net","text":"The signal steadies. The coastal station confirms it has you — you're no longer one lonely light in the dark; you're in the net now. Dawn is almost here."},"fail":{"who":"Comms Log","title":"Can't Keep Up","text":"The station's signal is too fast, your hand isn't trained enough, and your replies fall apart. The line dropped. Steady, connect again."},"failBoss":{"who":"Signal Lost","title":"The Line Dropped","text":"The waves drowned the signal and you couldn't send your position back. The station went quiet. Try again — this time, lock onto its rhythm."}},"ch4":{"name":"Chapter 4 · Night of the Storm","open":{"who":"Comms Log · Storm","title":"It Got Here First","text":"Rescue hasn't come, but the storm has. Signals flicker in and out of the noise. To read each other through the interference, you'll need six more letters."},"teachA":"H is four dits ····, V is ···—, F is ··—·. Count the dits exactly — one off and it's a different letter.","teachB":"Three more: L ·—··, P ·——·, B —···. L is R with one extra dit; B is D with one extra dit.","drill":"Practice mixed, through the noise. The real tricksters: H↔S (four dits vs three), B↔V, L↔R.","listenIntro":"The wind buries half the signal. Listen hard — through the noise, which letter is it sending?","useIntro":"While the signal still holds, hurl the most urgent words into the wind —","useResp":"STORM. HELP. Strangely, the waves break over you again and again, yet you feel neither cold nor tired — fear must have gone numb. The station answers desperately, telling you to hold on, just a little longer.","boss":"At the height of the storm, only a few of the station's flashes still show. Stare them down, read each one back, and bring that ship in at the end: SHIP.","clear":{"who":"The Wind Dropped","title":"Daybreak","text":"The storm passes; a pale grey light spreads over the sea. Far off, the outline of a ship breaks through the morning mist toward you — you've made it through the longest night."},"fail":{"who":"Comms Log","title":"Drowned by the Waves","text":"The noise was too strong; your signal was swallowed whole by the storm and couldn't get through. Steady, try again."},"failBoss":{"who":"Signal Lost","title":"The Ship Lost Its Way","text":"You couldn't read it back before the light died, and the ship veered off course in the mist. Try again — this time, fix on every flash."}},"ch5":{"name":"Chapter 5 · The Rare Signal","open":{"who":"Comms Log · Morning Mist","title":"A Signal in the Layer Beneath","text":"The rescue ship is still in the mist. But you notice that beneath the station's traffic hides another layer of signal — colder, more regular, not quite like something a person sends. To read it, you'll need the last few uncommon letters."},"teachA":"C —·—·, J ·———, Q ——·—. Uncommon — but they're hiding in that layer of signal.","teachB":"Three more: X —··—, Y —·——, Z ——··. Y looks a lot like C — count carefully.","drill":"Mix them all. The real tricksters: C↔K, Q↔G, Y↔C.","listenIntro":"That layer underneath sends again. Listen — it's spelling a letter you can't fully read yet.","useIntro":"You can't help it — you key back, and ask that signal: who are you? Why do you keep watching me?","useResp":"WHY. YOU. The layer beneath skips a beat, then returns a string you can read but don't want to believe: \"You are not on any ship's roster.\" You want to argue back — but you can't even remember which ship you were on.","boss":"The signal in the mist grows clearer, as if confirming something, over and over. Steady, read it back piece by piece, and spell out the word it keeps sending: CODE.","clear":{"who":"Beneath the Layer","title":"You're Not on the List","text":"You read the last letter of that signal. It isn't a rescue channel — it's someone logging you. And in that log, you belong to no known ship, no known person. The morning mist hasn't lifted."},"fail":{"who":"Comms Log","title":"Can't Read It Through","text":"These letters are too unfamiliar; you read that hidden layer in scraps and can't spell it out. Settle down, try again."},"failBoss":{"who":"Signal Lost","title":"It Withdrew","text":"You couldn't finish reading before it vanished, and that cold string pulled back into the layer beneath. Try again — this time, don't miss a single beat."}},"ch6":{"name":"Chapter 6 · Coordinates and Time","open":{"who":"Comms Log · First Light","title":"Report Your Position","text":"The rescue ship needs your exact coordinates to close in. You'll have to learn the numbers — 0 to 9. Report where you are, and what time it is."},"teachA":"Numbers all come in fives. 1 is ·————, and each one after adds a dah: 2 ··———, 3 ···——, 4 ····—, 5 ·····.","teachB":"Past 5 they start with dahs: 6 —····, 7 ——···, 8 ———··, 9 ————·, 0 —————.","drill":"Practice mixed with the letters. The tricksters: 5↔H, 6↔B, 9↔0.","listenIntro":"The station sends a string of numbers. Hear exactly which ones — these are the coordinates to match.","useIntro":"Your turn. Report the time, report your position —","useResp":"0300. 4705. You send the numbers out. The station goes quiet for a long time, long enough that you think the line is dead. Then it returns, repeating only one time: 0247 — the moment it first detected \"you.\" But what you remember is hitting the reef in the dead of night… the two times don't match.","boss":"The rescue ship wants a final confirmation. Watch every number it flashes and read it back, then send the time it keeps asking for: 0247.","clear":{"who":"It Matched","title":"0247","text":"You read that time back, and the station silently confirmed it. The ship's engine, for the first time, carries clearly through the mist — close now. But 0247 lodges in you, like a splinter you can't pull out."},"fail":{"who":"Comms Log","title":"Reported Wrong","text":"One number off and the whole coordinate is wrong; the ship won't find you. Take a breath, count each group of five exactly, report again."},"failBoss":{"who":"Signal Lost","title":"Coordinates Skewed","text":"You read a number wrong, and the ship veered off the wrong way. Try again — this time, not a single number can be off."}},"ch7":{"name":"Finale · The First Heartbeat","open":{"who":"Comms Log · Sunrise","title":"The Light, At Last","text":"The rescue ship's searchlight sweeps the sea and lands on you. In that very moment, the cold, regular signal in the layer beneath surges up and drowns out everything — and you realize your hand is already moving with it."},"bossWho":"——","bossTitle":"Keep Up With It","boss":"The signal goes faster and faster: short, long, short, long… You aren't reading it. You are it. Keep up with every beat — don't let it stop.","reveal":[{"who":"One Short, One Long","title":"That's Your Heartbeat","text":"You finally recognize that signal. One short, one long — not sent by anyone else. It's your heartbeat. From the first second you fell into this sea, it has been beating, and never stopped."},{"who":"0247","title":"The Radar That Night","text":"At 0247, coastal radar caught two unidentifiable pulses — one short, one long — then they sank into the sea. No wreck. No roster. Only you, and the thing you brought that doesn't belong here."},{"who":"For the First Time","title":"You Are Not the Rescued","text":"No one struck a reef. You are not a survivor. You are the thing that fell that night. All night long you weren't learning to call for help — you were learning to speak, for the first time, in their language."},{"who":"First Contact","title":"Time to Say Something","text":"The horizon brightens. The people on the ship hold up their lights, waiting for your reply. You gather everything you learned this whole night into one word — the simplest one, the one you most want to say — and key it out yourself."}],"sendIntro":"Key the first word you say to this world —","ending":{"who":"First Contact","title":"HELLO","text":"Five signals, steady and clear, cross the water. The ship's light pauses — then, on and off, slowly, gently, it returns the very same word.\n\nThe night is over. The conversation has only just begun."},"resultEyebrow":"FIRST CONTACT","resultVerdict":"With a pair of hands, you said your first words to the world","fail":{"who":"——","title":"The Heartbeat Scattered","text":"You lost that rhythm and it scattered into the noise. Settle down, feel it again — try once more."},"failBoss":{"who":"——","title":"It Paused","text":"You didn't keep up; the heartbeat skipped, and that signal dimmed. But it's still there — try again, and this time, don't let it stop."}}}},
+  ja: {"ui":{"lede":"夜の海で、無線だけがきみの声だ。<br>電鍵を握り、救難の信号を打て——モールス信号は、きみの手のなかで少しずつ育っていく。","tagline":"モールス救難 · 打ちながら覚える","start":"はじめる","board":"ランキング","cont":"つづける","keyIdle":"電鍵を押す","keyTip":"マウス／指で押しっぱなし、またはスペースキー長押し","listen":"聞いて…","yourTurn":"あなたの番","retryShort":"もっと短く","retryLong":"もっと長く","listenPrompt":"聞いて——これはどの文字？","replaySig":"もう一度聞く","listenAgain":"もう一度、焦らずに","good":"よし","received":"受信","fast":"速い！","tooSlow":"遅すぎた","wantShort":"短いはず","wantLong":"長いはず","tapAlong":"なぞって打つ：","tapToHear":"タップで再生","loading":"読み込み中…","uploading":"送信中…","empty":"まだ誰もいません。最初の一人に。","enterName":"ニックネーム","saveScore":"記録する","replay":"もう一度","freePractice":"自由練習","codebook":"モールス信号表","cbPlaceholder":"文字を入力して照会…","daily":"今日の単語","dailyDone":"本日達成 — また明日","dailyStreak":"{n}日連続","dailyTodayWas":"今日の単語は","back":"もどる","rescueDone":"RESCUE COMPLETE · 救出","lost":"TRANSMISSION LOST · 途絶","verdictWin":"あなたは闇から自分を打ち出した","verdictLose":"もう一度打って、夜明けまで持ちこたえろ","retryChapter":"もう一度","toTitle":"タイトルへ","retryBoss":"挑戦をやり直す","retryPractice":"章を最初から練習","challengers":"これまで {n} 人がこの海を越えた","soundHint":"ヒント：ヘッドホンか音量を。音は、このゲームの手応えの半分です。","selectChapter":"章を選ぶ","chapterLocked":"未開放","chapterCleared":"クリア","chapterPlay":"はいる","chapterHint":"章をクリアすると次が開きます。次回はここから続けられます。","msgBoard":"メッセージボード","msgNamePh":"ニックネーム","msgTextPh":"あとから来る人へ、一言を…","msgPost":"投稿","msgContinue":"つづける","msgEmpty":"まだ書き込みがありません。最初の一言を。","msgPosting":"送信中…","msgPosted":"送信しました ✦","msgFailLoad":"今はメッセージを読み込めません（接続の問題）。先へ進めます。","msgFailPost":"送信できませんでした。あとでもう一度。","msgHint":"スコアは最後までクリアした時だけ残ります。ここは各章に印を残す場所です。","boardNoteResult":"世界中の通信士とスコアを競う。オフライン時はこの端末に保存。","boardNoteOffline":"（今は世界ランキングに接続できません。この端末に保存し、復旧後に登録できます。）","boardNotePure":"世界ランキング。接続できない時はローカルのキャッシュを表示。","defaultName":"名もなき通信士","sendThis":"打て：","spell":"つづれ：","bossWho":"！救難","bossTitle":"灯に応えよ","loseTitle":"信号途絶","loseText":"灯が速すぎて手が追いつかず、回線が切れた。でももう覚えた——もう一度、救援が着くまで持ちこたえろ。"},"story":{"ch0":{"name":"序章 · 浸水","open":{"who":"救難日誌 · 最初の夜","title":"浸水した","text":"夜更け、小舟が岩礁に当たって浸水する。エンジンは死んだが、無線にはまだ電気がある。きみはモールス信号を知らない——でも今夜、覚えなければならない。"},"teach":"短く押すのが「ト」＝E、長く押すのが「ツー」＝T。輪を見て：長く押すと緑から琥珀に変わる。","drill":"もう手本はない。文字を見たら、自分で打つ。","useIntro":"まず、この二つの信号をつなげて送ろう。","useResp":"信号が送られた。海の向こうがふっと静まり——そして遠くに、ひとつの灯がともった。","boss":"一隻の船が灯で呼びかけてくる。短いか長いかを読み取り、灯が消える前に同じく打ち返せ。持ちこたえて、生きていると伝えるんだ。","clear":{"who":"通信確立","title":"見つけてくれた","text":"向こうの灯が、しっかりと一度返ってきた。きみは生きている——そして、互いに話せるようになった。ただ、その返しが速すぎる。打ち終わる前に、まるでこの二つの信号を前から知っていたように。きっと疲れているだけだ。"},"fail":{"who":"救難日誌","title":"ばらばら","text":"信号はばらばらに散って、自分でも何を打ったか分からない。海は真っ暗で、これでは誰にも読めない。深呼吸して、最初から。"},"failBoss":{"who":"信号途絶","title":"行ってしまった","text":"その灯のリズムに乗れなかった。光は一度またたいて、闇へ沈んだ。行ってしまった——でも、きみはまだここにいる。もう一度呼べ、遠くへ行ってしまう前に。"}},"ch1":{"name":"第一章 · 名を名乗れ","open":{"who":"救難日誌 · まだ最初の夜","title":"また光った","text":"あの光がまた、今度はもっと長く、もっと複雑にまたたく——まだ読めない。返すには、もっと多くの信号を覚えるしかない。"},"teachA":"新しい信号が二つ：I は短二つ、M は長二つ。覚えた E・T とよく似ている、混同するな。","teachB":"あと二つ：A は短長、N は長短——ちょうど逆。順番に注意。","drill":"全部まぜて練習。つまずくのは、たいてい鏡写しの組（A↔N、I↔M）。","listenIntro":"返事が来た。今度はきみが読む番——信号を聞いて、どの文字か選べ。","useIntro":"もう十分だ、何か言おう。きみが誰かを名乗れ——","useResp":"きみは初めて、本当の言葉を打った。相手は長い列で打ち返してくる……その終わりに、まだ習っていない信号が紛れている：···","boss":"相手が速く試してくる：光った通りに打ち返し、リズムに乗れ。最後に、ひとつの言葉を打ち返すんだ。","clear":{"who":"名前ができた","title":"NAME","text":"きみは名前を送り出した。船は数秒沈黙し、それから同じ信号を何度も打って、きみに覚えさせようとする——短三つ、···。あれは何だ？（つづく）"},"fail":{"who":"救難日誌","title":"まだ不慣れ","text":"新しい信号がまだ手に馴染まず、打つほど乱れていく。向こうは静かになり、きみが落ち着くのを待つように。落ち着いて、最初から。"},"failBoss":{"who":"信号途絶","title":"半拍遅れた","text":"相手は速く試し、きみの手は半拍遅れた。光は、消えた。もう一度——今度はそのリズムに乗れ。"}},"ch2":{"name":"第二章 · 最初の SOS","open":{"who":"救難日誌 · 二夜目","title":"水が増した","text":"水が膝を越えた。世界中が分かる、あの信号の列が要る——短三つ、長三つ、短三つ。まず、その二文字を覚えよう。"},"teach":"S は短三つ ···、O は長三つ ———。一息でつなげて打ち、途中で切るな。","drill":"覚えたものとまぜて練習。S は I（短二つ）と一番まぎらわしい——何回か数えろ。","listenIntro":"また送ってきた。今度は耳で——短三つ（S）か、長三つ（O）か？選べ。","useIntro":"さあ、つなげろ。この三文字は、世界中に通じる救難信号だ——","useResp":"···———··· が送り出された。海のどこかで、一筋の光が同じ三文字を正確に、ためらいなく打ち返す——速すぎて、とても人の手とは思えない。きみは潮風にしみる目をまばたいた。","boss":"区切りごとに光って、反応を試してくる。リズムに乗って、最後に完全な SOS をしっかり返せ。","clear":{"who":"最初の SOS","title":"···———···","text":"きみは生まれて初めての SOS を送った。向こうの光は一度ごとに明るくなる、「恐れるな、今行く」と言うように。救援は、本当に近づいている。"},"fail":{"who":"救難日誌","title":"崩れた","text":"短三つ長三つが崩れて、ひとつにつながらない。この乱れからは、誰も救難を読み取れない。深呼吸して、もう一度。"},"failBoss":{"who":"信号途絶","title":"乗れなかった","text":"相手は速く光り、きみの SOS はその拍に乗れず、光は暗くなった。もう一度——あの三文字を、しっかり送り出せ。"}},"ch3":{"name":"第三章 · 沿岸局","open":{"who":"通信記録 · 夜明け前","title":"誰かが拾い上げた","text":"きみの SOS を、ある沿岸局が受け止めた。相手はもっと速い信号で話しかけてくる——ついていくには、あと六文字を覚えなければ。"},"teachA":"R は ·—·、U は ··—、D は —··。三つで一組、点と線の位置に注意。","teachB":"あと三つ：K —·—、W ·——、G ——·。K と R は逆になりやすい、よく数えろ。","drill":"全部まぜて練習。一番つまずくのは鏡写しの組：R↔K、U↔D、W↔G。","listenIntro":"局はとても速く送ってくる。聞いて、選べ——今度は耳が頼り、手じゃない。","useIntro":"局が問いかけている。まず一番短い二文字で返し、受信していると伝えろ——","useResp":"OK。RADIO。きみは見えない通信網に自分をつないだ。局の向こうの人がふと止まり、奇妙なことを尋ねる：「きみは、どの船から来た？」きみは答えられない——船の記憶などない。衝突で頭を打ったせいだろう。","boss":"波が高まり、局の信号は途切れがちだ。一つひとつの光についていき、最後に自分の位置標識を打ち返せ：RADIO。この線を切らすな。","clear":{"who":"つながった","title":"きみは網の中","text":"信号が安定する。沿岸局はきみの受信を確認した——もう闇の中の孤独な一灯ではない、きみは網の中だ。夜が、明けようとしている。"},"fail":{"who":"通信記録","title":"ついていけない","text":"局の信号は速すぎて、きみの手はまだ及ばず、返しが乱れた。線は切れた。落ち着いて、もう一度つなげ。"},"failBoss":{"who":"信号途絶","title":"線が切れた","text":"波が信号をのみ込み、位置標識を返せなかった。局の向こうは静かになった。もう一度——今度はそのリズムをつかめ。"}},"ch4":{"name":"第四章 · 嵐の夜","open":{"who":"通信記録 · 嵐","title":"先に来たのは嵐","text":"救援はまだ、先に嵐が来た。信号は雑音の中で明滅する。妨害の中で互いを読むため、あと六文字を覚えなければ。"},"teachA":"H は短四つ ····、V は ···—、F は ··—·。点を正確に数えろ、一つ違えば別の文字だ。","teachB":"あと三つ：L ·—··、P ·——·、B —···。L は R に点を一つ足したもの、B は D に点を一つ。","drill":"雑音の中でまぜて練習。一番ひっかかるのは：H↔S（短四つ対三つ）、B↔V、L↔R。","listenIntro":"風の音が信号の半分をかき消す。よく聞け——雑音の中で、送ってくるのはどの文字だ？","useIntro":"信号があるうちに、一番大事な言葉を風へ叩き込め——","useResp":"STORM。HELP。妙なことに、波が何度も打ちつけるのに、寒くも、疲れもしない——恐怖で麻痺しているのだろう。局は必死に返してくる、持ちこたえろ、もう少しだと。","boss":"嵐が最も激しいとき、局の光はもう数えるほどしか見えない。じっと見据え、一つずつ読み返し、最後にあの船を導き入れろ：SHIP。","clear":{"who":"風がやんだ","title":"夜が明けた","text":"嵐が過ぎ、海面に灰白の光が広がる。遠く、一隻の船の輪郭が朝霧を割ってこちらへ来る——きみは、一番長い夜を越えた。"},"fail":{"who":"通信記録","title":"波にのまれた","text":"雑音が強すぎて、きみの信号は嵐に丸ごとのみ込まれ、届かなかった。落ち着いて、もう一度。"},"failBoss":{"who":"信号途絶","title":"船が道を見失った","text":"光が消える前に読み返せず、船は霧の中で進路を外した。もう一度——今度は一つひとつの光を見据えろ。"}},"ch5":{"name":"第五章 · 稀な信号","open":{"who":"通信記録 · 朝霧","title":"層の下の信号","text":"救援船はまだ霧の中。だがきみは気づく、局の通信の下に、もう一層の信号が隠れている——もっと冷たく、もっと規則的で、人が出すものとは思えない。読むには、最後の数文字、めったに出ない字を覚えなければ。"},"teachA":"C —·—·、J ·———、Q ——·—。珍しい、だがあの層の信号に潜んでいる。","teachB":"あと三つ：X —··—、Y —·——、Z ——··。Y は C によく似ている、よく数えろ。","drill":"全部まぜて練習。一番まぎらわしいのは：C↔K、Q↔G、Y↔C。","listenIntro":"下の層の信号がまた来た。聞け——きみがまだ読みきれない字を、綴っている。","useIntro":"こらえきれず、きみは打ち返す。あの信号に問う：きみは誰だ？なぜずっと見ている？","useResp":"WHY。YOU。下の層の信号が一拍止まり、そして読めるのに信じたくない言葉を返してくる：「きみは、どの船の名簿にもいない。」言い返そうとして——どの船に乗っていたかすら、思い出せない。","boss":"霧の中の信号はますます鮮明になり、何かを繰り返し確かめるようだ。落ち着いて、一段ずつ読み返し、最後にそれが送り続けるあの字を読み取れ：CODE。","clear":{"who":"層の下で","title":"名簿にきみはいない","text":"きみはその信号の最後の字を読み取った。それは救援の周波数ではない——誰かが、きみを記録しているのだ。そしてその記録の中で、きみはどの既知の船にも、どの既知の人にも属さない。朝霧は、まだ晴れない。"},"fail":{"who":"通信記録","title":"読みきれない","text":"この数文字はあまりに不慣れで、あの層の信号を切れ切れにしか読めず、字にならない。落ち着いて、もう一度。"},"failBoss":{"who":"信号途絶","title":"引っ込めた","text":"消える前に読みきれず、あの冷たい列は層の下へ引っ込んだ。もう一度——今度は一つも漏らすな。"}},"ch6":{"name":"第六章 · 座標と時刻","open":{"who":"通信記録 · 払暁","title":"位置を報せ","text":"救援船は、近づくのに正確な座標が要る。きみは数字を覚えなければ——0 から 9。どこにいるか、今が何時かを報せろ。"},"teachA":"数字はどれも五つで一組。1 は ·————、以後は一つずつ線が増える：2 ··———、3 ···——、4 ····—、5 ·····。","teachB":"5 を過ぎると線で始まる：6 —····、7 ——···、8 ———··、9 ————·、0 —————。","drill":"文字とまぜて練習。まぎらわしいのは：5↔H、6↔B、9↔0。","listenIntro":"局が数字の列を送ってくる。何の数字か正確に聞け——合わせるべき座標だ。","useIntro":"きみの番だ。時刻を報せ、位置を報せ——","useResp":"0300。4705。きみは数字を送り出す。局の向こうは長く沈黙し、線が切れたかと思うほどだった。そして戻ってきて、ただ一つの時刻だけを繰り返す：0247——それが、向こうが初めて「きみ」を捉えた時刻だ。だがきみの記憶では、岩礁に当たったのは真夜中……二つの時刻が、合わない。","boss":"救援船が最終確認を求めている。光る数字を一つずつ読み返し、最後に向こうが繰り返し求めるあの時刻を送れ：0247。","clear":{"who":"合った","title":"0247","text":"きみはその時刻を読み返し、局は黙って確認した。船のエンジン音が、初めて霧の中からはっきりと届く——近い。だが 0247 という数字は、抜けない棘のように、胸に刺さったままだ。"},"fail":{"who":"通信記録","title":"報せ間違えた","text":"数字が一つ合わなければ座標は丸ごと狂い、船はきみを見つけられない。深呼吸して、五つずつ正確に数え、もう一度報せろ。"},"failBoss":{"who":"信号途絶","title":"座標がずれた","text":"数字を読み違え、船は誤った方へそれていった。もう一度——今度は一つの数字も違えるな。"}},"ch7":{"name":"終章 · 最初の鼓動","open":{"who":"通信記録 · 日の出","title":"光が、ついに届いた","text":"救援船の探照灯が海面を掃き、きみの上で止まる。まさにその瞬間、層の下のあの冷たく規則的な信号が一気に膨れ上がり、すべてをかき消した——そしてきみは気づく、自分の手が、すでにそれに合わせて動いていることに。"},"bossWho":"——","bossTitle":"ついていけ","boss":"その信号はどんどん速くなる：トン、ツー、トン、ツー……きみはそれを読んでいるのではない。きみがそれなのだ。一つひとつについていけ、止めさせるな。","reveal":[{"who":"トン、ツー","title":"それはきみの鼓動","text":"きみはついにあの信号を聞き分けた。トン、ツー——誰かが送っているのではない。きみの鼓動だ。この海に墜ちた最初の一秒から、それは打ち続け、止まったことがない。"},{"who":"0247","title":"あの夜のレーダー","text":"午前 0247、沿岸レーダーが識別不能の二つのパルスを捉えた——トン、ツー——そして海面へ沈んだ。海難はない。名簿もない。あるのはきみと、きみが連れてきた、ここに属さないものだけ。"},{"who":"はじめて","title":"きみは救われた者ではない","text":"誰も岩礁に当たってなどいない。きみは生存者ではない。きみは、あの夜墜ちてきたものだ。この一晩じゅう学んでいたのは救難ではない——彼らの言葉で、はじめて、口をひらく方法だ。"},{"who":"ファーストコンタクト","title":"何か言うときだ","text":"水平線が明るむ。船の人々が灯を掲げ、きみの返事を待っている。きみはこの一晩で覚えたすべてを、一つの言葉に——一番簡単で、一番言いたい言葉に——込めて、自らの手で打ち出す。"}],"sendIntro":"この世界へ言う、最初の言葉を打て——","ending":{"who":"ファーストコンタクト","title":"HELLO","text":"五つの信号が、しっかりと、はっきりと、海を越える。船の灯が一度止まり——そして、明滅しながら、ゆっくりと、やさしく、同じ言葉を返してきた。\n\n夜は、過ぎた。対話は、いま始まったばかり。"},"resultEyebrow":"FIRST CONTACT · ファーストコンタクト","resultVerdict":"きみは一対の手で、世界へ最初の一言を告げた","fail":{"who":"——","title":"鼓動が乱れた","text":"きみはあのリズムを見失い、それは雑音へ散った。落ち着いて、もう一度感じろ——やり直せ。"},"failBoss":{"who":"——","title":"一瞬、止まった","text":"ついていけず、鼓動が一拍とび、あの信号は陰った。だがまだある——もう一度、今度は、止めさせるな。"}}}}
+};
+const L = () => PACKS[LANG];                 // 取目前語言包
+const T = (k) => (L().ui[k] ?? k);           // UI 字串
+
+// ================= 章節資料（結構，與文案分離）=================
+// 加一章＝填一塊。關數不釘死：teach 引入新字母（可分批），drill 依暴露次數×易混淆對長出來，use 敲有意義的詞。
+const CHAPTERS = [
+  {
+    id:"ch0",
+    batches:[ ["E","T"] ],
+    pool:["E","T"],
+    exposureX:3,
+    passRate:0.8,
+    confusable:[ ["E","T"] ],
+    useWords:["ET"],
+    boss:{ signals:10, startMs:2400, stepMs:130, pool:["E","T"], passRate:0.9 }
+  },
+  {
+    id:"ch1",
+    batches:[ ["I","M"], ["A","N"] ],
+    pool:["E","T","I","M","A","N"],
+    exposureX:4, listenX:6,
+    passRate:0.8,
+    confusable:[ ["A","N"], ["I","M"], ["E","I"], ["T","M"] ],
+    useWords:["NAME"],                       // 第一個真字（之後可加 "I AM" 等）
+    boss:{ signals:8, startMs:2200, stepMs:140, pool:["E","T","I","M","A","N"], word:"MAN", passRate:0.9 }
+  },
+  {
+    id:"ch2",
+    batches:[ ["S","O"] ],
+    pool:["E","T","I","M","A","N","S","O"],
+    exposureX:4, listenX:6,
+    passRate:0.8,
+    confusable:[ ["S","O"], ["S","I"], ["E","S"], ["O","M"] ],
+    useWords:["SOS"],                          // 里程碑：生平第一封 SOS
+    boss:{ signals:9, startMs:2100, stepMs:140, pool:["E","T","I","M","A","N","S","O"], word:"SOS", passRate:0.9 }
+  },
+  {
+    id:"ch3",
+    batches:[ ["R","U","D"], ["K","W","G"] ],
+    pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G"],
+    exposureX:4, reviewX:0, listenX:6,                     // 新6字母重練、舊8字母輕量複習
+    passRate:0.8,
+    confusable:[ ["R","K"], ["U","D"], ["W","G"], ["S","U"], ["G","M"], ["R","W"] ],
+    useWords:["OK","RADIO"],                    // 接上沿岸電台，拼出有意義的短詞
+    boss:{ signals:10, startMs:2000, stepMs:140, pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G"], word:"RADIO", passRate:0.9 }
+  },
+  {
+    id:"ch4",
+    batches:[ ["H","V","F"], ["L","P","B"] ],
+    pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G","H","V","F","L","P","B"],
+    exposureX:3, reviewX:0, listenX:6,
+    passRate:0.8,
+    confusable:[ ["H","S"], ["V","B"], ["B","D"], ["L","R"], ["P","W"], ["F","L"] ],
+    useWords:["STORM","HELP"],                   // 風暴夜：報出狀況、發出求援
+    boss:{ signals:10, startMs:1900, stepMs:150, pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G","H","V","F","L","P","B"], word:"SHIP", passRate:0.9 }
+  },
+  {
+    id:"ch5",
+    batches:[ ["C","J","Q"], ["X","Y","Z"] ],
+    pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G","H","V","F","L","P","B","C","J","Q","X","Y","Z"],
+    exposureX:3, reviewX:0, listenX:6,
+    passRate:0.8,
+    confusable:[ ["C","K"], ["Q","G"], ["Y","C"], ["X","B"], ["J","W"], ["Z","Q"] ],
+    useWords:["WHY","YOU"],                       // 你開始反問那層訊號
+    boss:{ signals:11, startMs:1900, stepMs:150, pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G","H","V","F","L","P","B","C","J","Q","X","Y","Z"], word:"CODE", passRate:0.9 }
+  },
+  {
+    id:"ch6",
+    batches:[ ["1","2","3","4","5"], ["6","7","8","9","0"] ],
+    pool:["E","T","I","M","A","N","S","O","R","U","D","K","W","G","H","V","F","L","P","B","C","J","Q","X","Y","Z","1","2","3","4","5","6","7","8","9","0"],
+    exposureX:3, reviewX:0, lockInX:2, listenX:6,            // 數字章：只重練數字，字母不再全體複習
+    passRate:0.8,
+    confusable:[ ["5","H"], ["6","B"], ["1","J"], ["9","0"], ["7","Z"], ["2","3"] ],
+    useWords:["0300","4705"],                     // 報出時間與座標
+    boss:{ signals:10, startMs:1900, stepMs:150, pool:["1","2","3","4","5","6","7","8","9","0"], word:"0247", passRate:0.9 }
+  },
+  {
+    id:"ch7",
+    finale:true,
+    batches:[], pool:["E","T"],
+    exposureX:0, reviewX:0, listenX:0,
+    passRate:0.8,
+    confusable:[],
+    useWords:[],                                  // 不教新字母；開場卡 → 心跳關 → 揭曉 → 送出第一個詞
+    firstWord:"HELLO",                            // 揭曉後，你親手敲出的第一個詞
+    boss:{ signals:14, startMs:1700, stepMs:110, pool:["E","T"], passRate:0.9 }   // 加速的心跳，無整詞、純撐住
+  }
+];
+
+// ---- 狀態 ----
+const G = {
+  screen:"title", score:0, combo:0, awaiting:false,
+  chapterPtr:0, chapter:null, rounds:[], roundPtr:0, round:null, phase:null,
+  letterBuf:"", wordPtr:0, typed:"", letterMissed:false,
+  gradeHits:0, gradeAttempts:0, gradeTotal:0, scoreAtChapterStart:0, scoreAtBossStart:0,
+  lockStreak:0, lockRepMissed:false, lockProg:{}, lockNeed:3, lockLast:null, lockCur:null,
+  hearts:3, heartsMax:3, survived:0, bossDur:2400, lastSaved:null,
+  _storyAfter:null
+};
+
+// ---- DOM ----
+const $ = id => document.getElementById(id);
+const screens = ["title","story","play","result","boardScreen","chapters","messages","fail","codebook","daily"];
+function show(id){
+  G.screen = id;
+  screens.forEach(s => $(s).classList.toggle("on", s === id));
+  if(id === "title"){ const fb = $("freeBtn"); if(fb) fb.style.display = gameCleared() ? "" : "none"; }
+}
+function gameCleared(){ return progressLoad() >= CHAPTERS.length; }   // 通關全部章節後解鎖自由複習
+
+// ================= 音訊 =================
+let actx = null, keyOsc = null, keyGain = null;
+function audioInit(){
+  if(actx) return;
+  try{ actx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch(e){ actx = null; } // ponytail: 無音訊也能玩，光圈仍在
+}
+function startTone(){
+  if(!actx) return;
+  keyOsc = actx.createOscillator(); keyGain = actx.createGain();
+  keyOsc.type = "sine"; keyOsc.frequency.value = 600;
+  const t = actx.currentTime;
+  keyGain.gain.setValueAtTime(0.0001, t);
+  keyGain.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+  keyOsc.connect(keyGain).connect(actx.destination);
+  keyOsc.start();
+}
+function stopTone(){
+  if(!actx || !keyOsc) return;
+  const t = actx.currentTime, g = keyGain;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.02);
+  keyOsc.stop(t + 0.04); keyOsc = null;
+}
+// 示範用：排定一段固定時長的音
+function beep(durMs, when, freq){
+  if(!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = "sine"; o.frequency.value = freq || 600;
+  o.connect(g).connect(actx.destination);
+  const t = actx.currentTime + (when || 0);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+  g.gain.setValueAtTime(0.18, t + durMs/1000 - 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + durMs/1000);
+  o.start(t); o.stop(t + durMs/1000 + 0.03);
+}
+
+// ================= 光圈 / Canvas =================
+const cv = $("cv"), ctx = cv.getContext("2d");
+let DPR = 1, CW = 0, CH = 0;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  CW = r.width; CH = r.height;
+  cv.width = CW * DPR; cv.height = CH * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+// 進行中的訊號（玩家按住 或 系統示範）
+let active = null;     // {start, demoDur, incoming}
+let ripples = [];      // 送出/收到後的擴散波
+function mix(c1, c2, t){ // 兩個 [r,g,b] 線性內插
+  return [0,1,2].map(i => Math.round(c1[i] + (c2[i]-c1[i]) * t));
+}
+const C_DIT = [84,243,160], C_DAH = [255,178,62], C_HOT = [255,106,61], C_IN = [156,255,203];
+
+function colorFor(elapsed){
+  if(elapsed < BOUND){
+    return mix(C_DIT, C_DAH, Math.min(elapsed/BOUND, 1) * 0.55); // 冷青→偏暖，過界前
+  }
+  const over = Math.min((elapsed - BOUND) / (DIT*3), 1);
+  return mix(C_DAH, C_HOT, over); // 過界後越按越燙
+}
+
+let sweepAng = 0;
+function draw(now){
+  ctx.clearRect(0, 0, CW, CH);
+  const cx = CW/2, cy = CH*0.52, base = Math.min(CW, CH) * 0.085;
+  const R = Math.min(CW, CH) * 0.46;                 // 雷達半徑
+
+  // 雷達底盤：距離環 + 十字格線
+  ctx.strokeStyle = "rgba(84,243,160,0.10)"; ctx.lineWidth = 1;
+  for(let k=1;k<=3;k++){ ctx.beginPath(); ctx.arc(cx, cy, R*k/3, 0, Math.PI*2); ctx.stroke(); }
+  ctx.beginPath();
+  ctx.moveTo(cx-R, cy); ctx.lineTo(cx+R, cy);
+  ctx.moveTo(cx, cy-R); ctx.lineTo(cx, cy+R);
+  ctx.stroke();
+
+  // 掃描臂（慢速旋轉 + 殘影楔形）
+  if(!reduceMotion){
+    sweepAng = (now/2600) % (Math.PI*2);
+    for(let i=0;i<22;i++){
+      const a = sweepAng - i*0.05;
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R);
+      ctx.strokeStyle = `rgba(84,243,160,${0.16*(1-i/22)})`; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+
+  // 擴散 ping（送出／收到）
+  ripples = ripples.filter(rp => now - rp.t < rp.life);
+  for(const rp of ripples){
+    const p = (now - rp.t) / rp.life;
+    const rad = base + p * R;
+    ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(${rp.c[0]},${rp.c[1]},${rp.c[2]},${(1-p)*0.55})`;
+    ctx.stroke();
+  }
+
+  // 現行訊號：成長環（半徑＝時長）
+  let glow = 0, col = C_DIT;
+  if(active){
+    const elapsed = active.demoDur != null ? Math.min(now - active.start, active.demoDur) : (now - active.start);
+    col = active.incoming ? C_IN : colorFor(elapsed);
+    glow = 1;
+    const grow = base + Math.min(elapsed, DIT*6) / (DIT*6) * R*0.72;
+    const layers = reduceMotion ? 1 : 3;
+    for(let i=0;i<layers;i++){
+      const rr = grow - i*10;
+      if(rr <= 0) continue;
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI*2);
+      ctx.lineWidth = 3 - i;
+      ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.55 - i*0.14})`;
+      ctx.stroke();
+    }
+    if(active.demoDur == null && elapsed >= BOUND){       // 過 dah 門檻：滿環＋轉琥珀
+      ctx.beginPath(); ctx.arc(cx, cy, base*1.5, 0, Math.PI*2);
+      ctx.lineWidth = 3; ctx.strokeStyle = `rgba(${C_DAH[0]},${C_DAH[1]},${C_DAH[2]},0.95)`; ctx.stroke();
+    }
+  } else if(!reduceMotion){
+    glow = 0.25 + Math.sin(now/700)*0.06;                 // 待機微呼吸
+  }
+
+  // 中央接觸點（磷光暈 + 實心點）
+  const r = base * (active ? 1.05 : 0.9);
+  const grad = ctx.createRadialGradient(cx, cy, 1, cx, cy, r*2.6);
+  grad.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.9*glow+0.12})`);
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r*2.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${glow*0.85+0.12})`; ctx.fill();
+
+  requestAnimationFrame(draw);
+}
+
+function spawnRipple(colorArr, life){ ripples.push({t:performance.now(), c:colorArr, life:life||650}); }
+
+// ================= 按鍵輸入 =================
+let pressStart = 0, pressing = false;
+function pressDown(){
+  audioInit();
+  if(!G.awaiting || pressing) return;
+  if(G.round && G.round.kind === "listen") return;   // 解碼關不收電鍵輸入
+  pressing = true;
+  pressStart = performance.now();
+  active = { start:pressStart, demoDur:null, incoming:false };
+  $("key").classList.add("down");
+  startTone();
+}
+function pressUp(){
+  if(!pressing) return;
+  pressing = false;
+  const dur = performance.now() - pressStart;
+  $("key").classList.remove("down");
+  stopTone();
+  active = null;
+  const sym = dur < BOUND ? "." : "-";
+  spawnRipple(sym === "." ? C_DIT : C_DAH);
+  onElement(sym, dur);
+}
+
+// 鍵盤（空白鍵），擋住長按重複觸發
+let spaceHeld = false;
+window.addEventListener("keydown", e => {
+  if(e.code === "Space"){ e.preventDefault(); if(!spaceHeld){ spaceHeld = true; pressDown(); } }
+  else if(e.code === "Enter" && G.screen === "result"){ trySave(); }
+});
+window.addEventListener("keyup", e => {
+  if(e.code === "Space"){ e.preventDefault(); spaceHeld = false; pressUp(); }
+});
+// 指標（滑鼠＋觸控統一）
+const keyEl = $("key");
+keyEl.addEventListener("pointerdown", e => { e.preventDefault(); pressDown(); });
+window.addEventListener("pointerup", () => { if(pressing) pressUp(); });
+keyEl.addEventListener("pointercancel", () => { if(pressing) pressUp(); });
+
+// ================= 示範 / 收訊（支援多元素字母）=================
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+function symDur(sym){ return sym === "." ? DIT : DAH; }
+function pretty(s){ return String(s).replace(/\./g,"·").replace(/-/g,"—"); }
+
+async function playPattern(pattern, opts){     // 播一個字母的整段碼（示範或收訊）
+  opts = opts || {};
+  for(let i=0;i<pattern.length;i++){
+    const sym = pattern[i], d = symDur(sym);
+    beep(d, 0, opts.freq);
+    active = { start:performance.now(), demoDur:d, incoming:!!opts.incoming };
+    await wait(d);
+    active = null; spawnRipple(opts.incoming ? C_IN : (sym==="."?C_DIT:C_DAH));
+    await wait(DIT);                            // 元素間隔
+  }
+}
+async function demoLetter(letter){
+  $("hint").textContent = T("listen");
+  await playPattern(MORSE[letter], {});
+}
+
+// ================= 通用引擎：把一章展開成 rounds =================
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function teachKey(chId, bi){                     // 該章 teach 引子的 key（結構性，與語言無關）
+  const s = PACKS.zh.story[chId];
+  return s.teach ? "teach" : ("teach" + "ABCDEF"[bi]);
+}
+
+function dedupeConsecutive(arr){            // 避免同字母連續，讀起來不死板
+  const a = arr.slice();
+  for(let i=1;i<a.length;i++){
+    if(a[i]===a[i-1]){ for(let j=i+1;j<a.length;j++){ if(a[j]!==a[i]){ [a[i],a[j]]=[a[j],a[i]]; break; } } }
+  }
+  return a;
+}
+
+function buildRounds(ch){
+  // 逐字消化：教一個 → 立刻連續鎖定 lockIn 次（錯了會攤開答案照著敲）→ 才教下一個
+  // 全部鎖定後，再做一輪輕量「混合辨識」（新字母＋易混淆對），最後才進聽打與用關
+  const rounds = [];
+  const newSet = ch.batches.flat();
+  const lockIn  = ch.lockInX ?? 3;        // 每個新字母連續鎖定次數
+  const mixNewX = ch.mixNewX ?? 1;        // 混合辨識中，新字母各幾次
+  const reviewX = ch.reviewX ?? 0;        // 混合辨識中，舊字母各幾次（預設 0：舊字母靠易混淆對＋聽打維持）
+
+  let firstDrillBeat = false;
+  ch.batches.forEach((batch, bi) => {
+    batch.forEach((letter, k) => {
+      const t = { kind:"teach", letters:[letter] };
+      if(k === 0) t.beatKey = teachKey(ch.id, bi);        // 該批首字掛劇情引子
+      rounds.push(t);
+      rounds.push({ kind:"teach", letters:[letter] });    // 同字母再示範一次（確保第一次出現都有教）
+    });
+    // 該批精熟關：批內字母隨機跳著考，每字母「跳著乾淨連對 lockNeed 次」才畢業；全畢業才放行
+    const ls = { kind:"lockset", letters:batch.slice(), lockNeed:lockIn };
+    if(!firstDrillBeat){ ls.beatKey = "drill"; firstDrillBeat = true; }
+    rounds.push(ls);
+  });
+
+  // 輕量混合辨識：把學過的混在一起打，重點在易混淆對
+  let mix = [];
+  ch.pool.forEach(l => {
+    const reps = newSet.includes(l) ? mixNewX : reviewX;
+    for(let i=0;i<reps;i++) mix.push(l);
+  });
+  ch.confusable.forEach(([a,b]) => { if(ch.pool.includes(a) && ch.pool.includes(b)) mix.push(a, b); });
+  dedupeConsecutive(shuffle(mix)).forEach(letter => rounds.push({ kind:"drill", letters:[letter] }));
+
+  // 解碼（聽打）：全部鎖定後才進；新字母至少各一次，其餘從整池補滿到 listenX
+  const listenN = ch.listenX || 0;
+  if(listenN > 0){
+    let lbag = newSet.slice();
+    while(lbag.length < listenN){ lbag.push(ch.pool[(Math.random()*ch.pool.length)|0]); }
+    lbag = dedupeConsecutive(shuffle(lbag).slice(0, listenN));
+    lbag.forEach((letter, i) => {
+      const r = { kind:"listen", letters:[letter] };
+      if(i === 0) r.beatKey = "listenIntro";
+      rounds.push(r);
+    });
+  }
+  ch.useWords.forEach((word, i) => {
+    const r = { kind:"use", word, letters:word.replace(/ /g,"").split("") };
+    if(i === 0) r.beatKey = "useIntro";
+    rounds.push(r);
+  });
+  return rounds;
+}
+
+// ================= 顯示輔助 =================
+function showTarget(letter){ const t=$("target"); t.classList.remove("word"); t.textContent = letter; }
+function showWord(word){ const t=$("target"); t.classList.add("word"); t.textContent = word; }
+function drawReadout(r, buf){
+  if(r && (r.kind === "use" || r.kind === "daily")){
+    $("readout").innerHTML = `<span class="ok">${esc(G.typed)}</span> <span>${pretty(buf)}</span>`;
+  } else {
+    $("readout").innerHTML = `<span>${pretty(buf)}</span>`;
+  }
+}
+function updateHud(){
+  $("hudScore").textContent = G.score;
+  $("hudCombo").textContent = G.combo >= 2 ? ("×" + G.combo) : "";
+  const inBoss = G.round && G.round.kind === "boss";
+  $("hudHearts").textContent = inBoss ? "♥".repeat(Math.max(0,G.hearts)) + "♡".repeat(Math.max(0,G.heartsMax-G.hearts)) : "";
+}
+
+// ================= 劇情：整頁故事卡 + 嵌入式引子橫幅 =================
+function storyThen(card, after){
+  $("storyWho").textContent = card.who;
+  $("storyTitle").textContent = card.title;
+  $("storyText").textContent = card.text;
+  show("story"); G._storyAfter = after;
+}
+$("storyNext").addEventListener("click", () => { const f = G._storyAfter; G._storyAfter = null; if(f) f(); });
+
+function showInlineBeat(text, after, hold, waitTap){
+  const b = $("beat");
+  if(waitTap){ b.innerHTML = esc(text) + ` <span class="beatcue">${T("cont")} ▸</span>`; }
+  else { b.textContent = text; }
+  b.classList.add("on");
+  G.awaiting = false;
+  const go = () => { b.classList.remove("on"); b.onclick = null; clearTimeout(G._beatTimer); after && after(); };
+  b.onclick = go;                                 // 點一下繼續／跳過
+  clearTimeout(G._beatTimer);
+  if(!waitTap) G._beatTimer = setTimeout(go, hold || 2600);   // 教學引子不自動消失，等玩家點
+}
+
+// ================= 章節流程 =================
+function startGame(){
+  audioInit(); resize();
+  bumpPlays();                                   // 累計挑戰人數 +1（失敗不計，整段重玩才算一次）
+  G.score = 0; G.combo = 0; G.lastSaved = null; G.chapterPtr = 0;
+  beginChapter();
+}
+function beginChapter(){
+  const ch = CHAPTERS[G.chapterPtr];
+  G.chapter = ch; G.rounds = buildRounds(ch); G.roundPtr = 0; G.round = null;
+  G.gradeHits = 0; G.gradeAttempts = 0;
+  G.gradeTotal = G.rounds.reduce((n,r)=> n + (((r.kind==="drill" && !r.lock)||r.kind==="listen") ? 1 : (r.kind==="use" ? r.letters.length : 0)), 0);
+  G.scoreAtChapterStart = G.score;   // 重試本章時還原，避免靠失敗洗分
+  storyThen(L().story[ch.id].open, enterPlay);
+}
+function enterPlay(){
+  show("play"); resize(); $("play").classList.remove("free");
+  $("hudStage").textContent = L().story[G.chapter.id].open.title;
+  $("timer").classList.add("hide");
+  updateHud();
+  nextRound();
+}
+function nextRound(){
+  if(G.roundPtr >= G.rounds.length){                          // 練習段結束：先驗正確率
+    const need = practiceNeed();
+    if(G.gradeAttempts > 0 && G.gradeHits / G.gradeAttempts < need){ return chapterFail(false); }
+    return startBoss();                                        // 過關 → 章末打 boss
+  }
+  const r = G.rounds[G.roundPtr]; G.round = r;
+  if(r.beatKey){
+    const text = L().story[G.chapter.id][r.beatKey];
+    return showInlineBeat(text, () => runRound(r), null, true);   // 所有劇情引子都等玩家點繼續，不自動跳
+  }
+  runRound(r);
+}
+function setEncodeMode(on){                       // on=敲擊(電鍵) / off=解碼(選項列)
+  const k = document.getElementById("keywrap"), d = document.getElementById("decode");
+  if(k) k.style.display = on ? "" : "none";
+  if(d) d.style.display = on ? "none" : "";
+}
+function runRound(r){
+  $("readout").textContent = "";
+  $("target").onclick = null;
+  G.letterBuf = ""; G.wordPtr = 0; G.typed = ""; G.letterMissed = false;
+  if(r.kind === "listen"){
+    setEncodeMode(false);
+    showTarget("？"); $("hint").textContent = T("listenPrompt");
+    buildChoices(r); setChoicesEnabled(false);
+    G.awaiting = false;
+    playPattern(MORSE[r.letters[0]], { incoming:true }).then(() => { setChoicesEnabled(true); G.awaiting = true; });
+    return;
+  }
+  setEncodeMode(true);
+  if(r.kind === "teach"){
+    showTarget(r.letters[0]); $("hint").textContent = ""; G.awaiting = false;
+    demoLetter(r.letters[0]).then(() => { $("hint").textContent = T("yourTurn"); G.awaiting = true; });
+  } else if(r.kind === "drill"){
+    showTarget(r.letters[0]); $("hint").textContent = ""; G.awaiting = true;
+  } else if(r.kind === "lockset"){
+    G.lockProg = {}; r.letters.forEach(l => G.lockProg[l] = 0);   // 批內每字母各記乾淨連對數
+    G.lockNeed = r.lockNeed; G.lockLast = null; G.lockRepMissed = false;
+    nextLockLetter();
+  } else if(r.kind === "use"){
+    showWord(r.word); $("hint").textContent = T("spell") + r.word; drawReadout(r, ""); G.awaiting = true;
+  }
+}
+
+// ---- 解碼關：選項列 ----
+function buildChoices(r){
+  const ch = G.chapter, target = r.letters[0];
+  const conf = ch.confusable
+    .filter(p => p.includes(target))
+    .map(p => p[0] === target ? p[1] : p[0])
+    .filter(l => ch.pool.includes(l));
+  const picks = [];
+  shuffle(conf).forEach(l => { if(picks.length < 3 && !picks.includes(l)) picks.push(l); });
+  shuffle(ch.pool.filter(l => l !== target)).forEach(l => { if(picks.length < 3 && !picks.includes(l)) picks.push(l); });
+  const opts = shuffle([target, ...picks.slice(0,3)]);
+  const el = $("choices"); el.innerHTML = "";
+  opts.forEach(letter => {
+    const b = document.createElement("button");
+    b.className = "ch"; b.type = "button"; b.textContent = letter;
+    b.addEventListener("click", () => answerListen(letter, b));
+    el.appendChild(b);
+  });
+}
+function setChoicesEnabled(on){
+  $("choices").querySelectorAll("button").forEach(b => { b.disabled = !on; });
+  const rs = $("replaySig"); if(rs) rs.disabled = !on;
+}
+function replaySignal(){
+  if(!G.round || G.round.kind !== "listen") return;
+  G.awaiting = false; setChoicesEnabled(false);
+  playPattern(MORSE[G.round.letters[0]], { incoming:true }).then(() => { setChoicesEnabled(true); G.awaiting = true; });
+}
+function answerListen(letter, btn){
+  if(!G.awaiting) return;
+  const r = G.round, target = r.letters[0];
+  if(letter === target){
+    G.awaiting = false; setChoicesEnabled(false);
+    if(btn) btn.classList.add("ok");
+    G.gradeAttempts += 1; if(!G.letterMissed) G.gradeHits += 1;
+    G.combo += 1; G.score += 70 + Math.min(G.combo,8)*8;
+    $("readout").innerHTML = `<span class="ok">${esc(target)}　${T("good")}</span>`;
+    updateHud();
+    const need = practiceNeed();
+    if(G.gradeHits + (G.gradeTotal - G.gradeAttempts) < need * G.gradeTotal){ return chapterFail(false); }
+    setTimeout(() => advanceAfter(r), 640);
+  } else {
+    G.letterMissed = true; G.combo = 0;
+    if(btn){ btn.classList.add("bad"); btn.disabled = true; }
+    $("readout").innerHTML = `<span class="bad">${T("listenAgain")}</span>`;
+    updateHud();
+  }
+}
+
+// ================= 敲擊評定（逐元素 → 逐字母 → 逐詞）=================
+function clean(sym, dur){ const w = sym === "." ? CLEAN_DIT : CLEAN_DAH; return dur >= w[0] && dur <= w[1]; }
+function cleanLetter(buf, dur){ return buf.length === 1 && clean(buf, dur); }
+
+function onElement(sym, dur){
+  if(!G.awaiting) return;
+  if(G.round && G.round.kind === "listen") return;
+  if(G.round && G.round.kind === "boss"){ return bossElement(sym, dur); }
+  const r = G.round; if(!r) return;
+  G.letterBuf += sym;
+  drawReadout(r, G.letterBuf);
+  const target = r.kind === "freeplay" ? G.fpCur : (r.kind === "lockset" ? G.lockCur : r.letters[G.wordPtr]);
+  const expected = MORSE[target];
+  if(G.letterBuf.length >= expected.length){
+    if(r.kind === "freeplay") finishFree(G.letterBuf === expected, expected);
+    else if(r.kind === "lockset") finishLockset(G.letterBuf === expected, dur, expected);
+    else if(r.kind === "daily") finishDaily(G.letterBuf === expected, expected);
+    else finishLetter(G.letterBuf === expected, dur, expected);
+  }
+}
+
+// ===== 自由複習區：通關後解鎖，全部字母＋數字無限隨機練習，不計分；敲錯揭示正確按法 =====
+const FREE_SYMS = Object.keys(MORSE);                 // 26 字母 + 10 數字
+function startFreeplay(){
+  G.round = { kind:"freeplay" };
+  show("play"); resize(); setEncodeMode(true);
+  $("play").classList.add("free");                    // 顯示「跳出」鍵、隱藏計分
+  $("hudStage").textContent = T("freePractice");
+  $("hudCombo").textContent = ""; $("hudScore").textContent = ""; $("hudHearts").textContent = "";
+  $("timer").classList.add("hide"); $("decode").style.display = "none";
+  nextFree();
+}
+function nextFree(){
+  G.letterBuf = "";
+  let sym = FREE_SYMS[(Math.random()*FREE_SYMS.length)|0];
+  if(sym === G.fpCur) sym = FREE_SYMS[(Math.random()*FREE_SYMS.length)|0];  // 盡量不連續同一個
+  G.fpCur = sym;
+  showTarget(sym); $("hint").textContent = ""; $("readout").textContent = "";
+  G.awaiting = true;
+}
+function finishFree(ok, expected){
+  G.awaiting = false;
+  if(!ok){                                            // 敲錯 → 攤開正確按法，原地重試（不計分、不結束）
+    $("readout").innerHTML = `<span class="bad">${pretty(G.letterBuf)}</span>`;
+    $("hint").innerHTML = `<span class="reveal">${T("tapAlong")} ${pretty(expected)}</span>`;
+    setTimeout(() => { G.letterBuf = ""; drawReadout(G.round, ""); G.awaiting = true; }, 720);
+    return;
+  }
+  $("readout").innerHTML = `<span class="ok">${pretty(expected)}　${T("good")}</span>`;
+  setTimeout(nextFree, 460);                           // 下一個隨機字母，無限練習
+}
+function exitFreeplay(){ $("play").classList.remove("free"); G.round = null; G.awaiting = false; show("title"); }
+
+// ===== 摩斯密碼表 + 查詢（內建 MORSE 生成，不連外，不影響遊戲） =====
+function renderCodebookTable(){
+  const rows = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("").filter(c => MORSE[c]);
+  $("cbTable").innerHTML = rows.map(c => `<div class="cbrow"><span class="k">${c}</span><span class="v">${pretty(MORSE[c])}</span></div>`).join("");
+}
+function cbSearch(){
+  const raw = ($("cbInput").value || "").toUpperCase();
+  if(!raw.trim()){ $("cbResult").innerHTML = ""; return; }
+  $("cbResult").innerHTML = [...raw].map(ch => {
+    if(ch === " ") return `<span class="cbsp"></span>`;
+    if(MORSE[ch]) return `<span class="cbchip"><b>${esc(ch)}</b><i>${pretty(MORSE[ch])}</i></span>`;
+    return `<span class="cbunk">${esc(ch)}</span>`;       // 不認得的字元（標點等）原樣淡顯
+  }).join("");
+}
+function openCodebook(){ renderCodebookTable(); $("cbInput").value = ""; $("cbResult").innerHTML = ""; show("codebook"); }
+
+// ===== 每日單字（純前端）：日期種子選字，全世界同一天同一字；每日一次＋連續天數 =====
+const DAILY_WORDS = ("APPLE OCEAN RADIO NIGHT LIGHT SIGNAL RESCUE MORSE STORM SHIP HELP CODE WAVE SHORE COAST BEACON HARBOR ANCHOR VESSEL SAILOR COMPASS NORTH SOUTH DRIFT TIDE DEPTH RIVER CLOUD THUNDER SILVER GOLDEN QUIET WHISPER ECHO SILENCE MEMORY DREAM SHADOW MIRROR WINDOW CANDLE LANTERN COPPER IRON STEEL BRONZE MARBLE FOREST MEADOW GARDEN ORCHARD MOUNTAIN VALLEY DESERT ISLAND JUNGLE WINTER SUMMER AUTUMN SPRING FROST EMBER FLAME SPARK CRYSTAL PLANET COMET GALAXY METEOR ORBIT ROCKET SATURN VENUS MARS LUNAR SOLAR STELLAR COSMIC VOYAGE JOURNEY EXPLORE DISCOVER WONDER SECRET PUZZLE RIDDLE CIPHER LEGEND MYTH ORACLE PROPHET WIZARD DRAGON PHOENIX FALCON RAVEN EAGLE TIGER PANTHER JAGUAR LEOPARD DOLPHIN WHALE TURTLE CORAL PEARL AMBER JADE OPAL RUBY EMERALD TOPAZ VELVET COTTON LINEN SUGAR HONEY LEMON CHERRY PEACH MELON GRAPE OLIVE WHEAT MAPLE CEDAR WILLOW BIRCH ASPEN PINE PALM FERN MOSS BLOOM PETAL POLLEN NECTAR BUTTERFLY BEETLE CRICKET FIREFLY LANTERNS").split(" ").filter(w => [...w].every(c => MORSE[c]));
+const DAILY_KEY = "ns_daily";
+function todayStr(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function daysBetween(a, b){ return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+function dailyWordFor(dateStr){ const seed = parseInt(dateStr.replace(/-/g,""), 10) || 0; return DAILY_WORDS[seed % DAILY_WORDS.length]; }
+function loadDaily(){ try{ return JSON.parse(localStorage.getItem(DAILY_KEY)) || {}; }catch(e){ return {}; } }
+function saveDaily(o){ try{ localStorage.setItem(DAILY_KEY, JSON.stringify(o)); }catch(e){} }
+function dailyStreak(){ return loadDaily().streak || 0; }
+function dailyDoneToday(){ return loadDaily().last === todayStr(); }
+
+function openDaily(){
+  if(dailyDoneToday()) renderDailyDone(false);
+  else startDailyPlay();
+}
+function startDailyPlay(){
+  const word = dailyWordFor(todayStr());
+  G.round = { kind:"daily", word, letters:word.split("") };
+  G.letterBuf = ""; G.wordPtr = 0; G.typed = "";
+  show("play"); resize(); setEncodeMode(true);
+  $("play").classList.add("free");                    // 顯示右上角「跳出」鍵、隱藏計分
+  $("hudStage").textContent = T("daily");
+  $("hudCombo").textContent = ""; $("hudScore").textContent = ""; $("hudHearts").textContent = "";
+  $("timer").classList.add("hide"); $("decode").style.display = "none";
+  showWord(word); $("hint").textContent = T("spell") + word; drawReadout(G.round, "");
+  G.awaiting = true;
+}
+function finishDaily(ok, expected){
+  const r = G.round;
+  if(!ok){                                            // 敲錯 → 攤開正確按法，原地重試（不計分、不結束）
+    G.awaiting = false;
+    $("readout").innerHTML = `<span class="ok">${esc(G.typed)}</span> <span class="bad">${pretty(G.letterBuf)}</span>`;
+    $("hint").innerHTML = `<span class="reveal">${T("tapAlong")} ${pretty(expected)}</span>`;
+    setTimeout(() => { G.letterBuf = ""; drawReadout(r, ""); $("hint").textContent = T("spell") + r.word; G.awaiting = true; }, 780);
+    return;
+  }
+  G.typed += r.letters[G.wordPtr];
+  G.letterBuf = ""; G.wordPtr += 1;
+  if(G.wordPtr < r.letters.length){ drawReadout(r, ""); G.awaiting = true; return; }
+  G.awaiting = false;                                 // 整個單字完成
+  $("readout").innerHTML = `<span class="ok">${esc(G.typed)}　${T("good")}</span>`;
+  setTimeout(completeDaily, 700);
+}
+function completeDaily(){
+  const today = todayStr(), d = loadDaily();
+  if(d.last !== today){                               // 更新連續天數
+    let streak = 1;
+    if(d.last && daysBetween(d.last, today) === 1) streak = (d.streak || 0) + 1;
+    saveDaily({ last: today, streak });
+  }
+  $("play").classList.remove("free"); G.round = null;
+  renderDailyDone(true);
+}
+function renderDailyDone(justFinished){
+  const word = dailyWordFor(todayStr());
+  const streak = dailyStreak();
+  $("dailyBody").innerHTML =
+    `<div class="dbig">${T("good")} · ${T("dailyDone")}</div>` +
+    `<div class="dstreak">${T("dailyStreak").replace("{n}", streak)}</div>` +
+    `<div class="dsub">${T("dailyTodayWas")}</div>` +
+    `<div class="dword">${esc(word)}</div><div class="dcode">${word.split("").map(c => pretty(MORSE[c])).join("　")}</div>`;
+  show("daily");
+}
+
+// ===== 精熟關（lockset）：批內隨機跳著考，跳著乾淨連對才 +進度且給分 =====
+function lockProgress(){ const n = Math.min(G.lockProg[G.lockCur] || 0, G.lockNeed); return n + " / " + G.lockNeed; }
+function nextLockLetter(){
+  G.lockRepMissed = false; G.letterBuf = ""; $("readout").textContent = "";
+  const need = G.lockNeed, all = G.round.letters;
+  const unmastered = all.filter(l => G.lockProg[l] < need);
+  if(unmastered.length === 0){ $("hint").textContent = ""; return advanceAfter(G.round); }   // 全畢業 → 放行
+  const mastered = all.filter(l => G.lockProg[l] >= need);
+  const fresh = unmastered.filter(l => l !== G.lockLast);   // 避免連抽同一個
+  let pick;
+  if(fresh.length === 0){                                   // 唯一未熟者＝上一個 → 插一個已熟的當間隔（複習，不計分）
+    const spacer = mastered.filter(l => l !== G.lockLast);
+    pick = spacer.length ? spacer[(Math.random()*spacer.length)|0] : unmastered[0];
+  } else {
+    const review = mastered.filter(l => l !== G.lockLast);  // 已熟的偶爾插花複習（不計分、不進度）
+    pick = (review.length && Math.random() < 0.2) ? review[(Math.random()*review.length)|0]
+                                                  : fresh[(Math.random()*fresh.length)|0];
+  }
+  G.lockCur = pick;
+  showTarget(pick); $("hint").textContent = lockProgress(); G.awaiting = true;
+}
+function finishLockset(ok, dur, expected){
+  const cur = G.lockCur, need = G.lockNeed;
+  if(!ok){                                          // 敲錯：攤開答案、該字母進度歸零、原地重試同字母
+    G.lockProg[cur] = 0; G.lockRepMissed = true; G.combo = 0; G.awaiting = false;
+    $("readout").innerHTML = `<span class="bad">${pretty(G.letterBuf)}</span>`;
+    $("hint").innerHTML = `<span class="reveal">${T("tapAlong")} ${pretty(expected)}</span>`;
+    setTimeout(() => { G.letterBuf = ""; G.awaiting = true; }, 720);
+    return;
+  }
+  const clean = !G.lockRepMissed;                   // 這次有沒有觸發提醒
+  const repeat = (cur === G.lockLast);              // 和上次同字母？
+  const wasUnmastered = G.lockProg[cur] < need;
+  const counts = clean && !repeat && wasUnmastered; // 只有「跳著、乾淨、未熟」才算進度＋給分
+  if(counts){
+    G.lockProg[cur] += 1;
+    G.combo += 1;
+    let pts = 80 + Math.min(G.combo,8)*10; if(cleanLetter(G.letterBuf, dur)) pts += 10;
+    G.score += pts;
+  }
+  G.lockLast = cur; G.letterBuf = ""; updateHud();
+  $("readout").innerHTML = `<span class="ok">${pretty(expected)}　${counts ? T("good") : ""}</span>`;
+  G.awaiting = false;
+  const done = G.round.letters.every(l => G.lockProg[l] >= need);
+  if(done){ $("hint").textContent = ""; return setTimeout(() => advanceAfter(G.round), 520); }
+  setTimeout(nextLockLetter, 460);
+}
+function practiceNeed(){                          // 正確率門檻隨字母池變大而下修（0.8 → 0.6）
+  return Math.max(0.6, 0.82 - G.chapter.pool.length * 0.006);
+}
+function finishLetter(ok, dur, expected){         // teach / 混合 drill / use（非精熟關）
+  const r = G.round;
+  const graded = (r.kind === "drill" || r.kind === "use") && !r.boss && !r.finaleSend;
+  if(!ok){                                        // 寬鬆：不罰分，重試這個字母
+    if(graded) G.letterMissed = true;
+    G.awaiting = false; G.combo = 0;
+    $("readout").innerHTML = `<span class="bad">${pretty(G.letterBuf)}</span>`;
+    if(r.kind === "drill" || r.kind === "teach"){  // 攤開答案：照著敲
+      $("hint").innerHTML = `<span class="reveal">${T("tapAlong")} ${pretty(expected)}</span>`;
+    } else if(expected.length === 1){
+      $("readout").innerHTML = `<span class="bad">${pretty(G.letterBuf)}　${expected === "." ? T("retryShort") : T("retryLong")}</span>`;
+    }
+    setTimeout(() => { G.letterBuf = ""; drawReadout(r, ""); G.awaiting = true; }, 720);
+    return;
+  }
+  if(graded){                                     // 首次就對才算命中
+    G.gradeAttempts += 1;
+    if(!G.letterMissed) G.gradeHits += 1;
+  }
+  G.combo += 1;
+  let pts = r.kind === "teach" ? 50 : r.kind === "drill" ? 80 + Math.min(G.combo,8)*10 : 60;
+  if(cleanLetter(G.letterBuf, dur)) pts += 10;
+  G.score += pts;
+  G.typed += r.letters[G.wordPtr];
+  G.letterBuf = ""; G.wordPtr += 1;
+  updateHud();
+  if(graded){                                     // 即刻失敗：剩下全對也達不到門檻就不用磨了
+    const need = practiceNeed();
+    if(G.gradeHits + (G.gradeTotal - G.gradeAttempts) < need * G.gradeTotal){ G.awaiting = false; return chapterFail(false); }
+  }
+  if(r.kind === "use" && G.wordPtr < r.letters.length){    // 詞還沒拼完，繼續下一字母
+    G.letterMissed = false;
+    drawReadout(r, ""); G.awaiting = true; return;
+  }
+  $("readout").innerHTML = `<span class="ok">${r.kind === "use" ? esc(G.typed) : pretty(expected)}　${T("good")}</span>`;
+  G.awaiting = false;
+  advanceAfter(r);
+}
+
+function advanceAfter(r){
+  if(r.finaleSend){                                          // 終章：敲完第一個詞 → 結局 → 留言板 → 結果頁
+    const s = L().story[G.chapter.id], chId = G.chapter.id;
+    progressSave(G.chapterPtr + 1);                          // 標記終章已通過
+    return setTimeout(() => storyThen(s.ending, () => openMessageBoard(chId, () => showResult(true))), 700);
+  }
+  if(r.boss){ return setTimeout(() => bossEnd(true), 600); }   // boss 收尾的「敲出整詞」
+  if(r.kind === "use"){
+    const next = G.rounds[G.roundPtr + 1];
+    const lastUse = !next || next.kind !== "use";              // 多個用關詞時，只在最後一個之後才放回應
+    if(lastUse){
+      setTimeout(() => showInlineBeat(L().story[G.chapter.id].useResp, () => { G.roundPtr++; nextRound(); }, null, true), 600);
+    } else {
+      setTimeout(() => { G.roundPtr++; nextRound(); }, 760);
+    }
+  } else {
+    setTimeout(() => { G.roundPtr++; nextRound(); }, 520);
+  }
+}
+
+// ================= Boss：讀燈號→限時回敲；章末敲出整詞 =================
+let bossRAF = null;
+function startBoss(){
+  const s = L().story[G.chapter.id];
+  G.round = { kind:"boss" };
+  storyThen({ who:s.bossWho || T("bossWho"), title:s.bossTitle || T("bossTitle"), text:s.boss }, runBoss);
+}
+function runBoss(){
+  show("play"); resize(); setEncodeMode(true);
+  const b = G.chapter.boss;
+  G.scoreAtBossStart = G.score;                  // 再挑戰一次時還原到此，保留練習分、不可洗分
+  const pr = b.passRate ?? 0.9;
+  const allowedMiss = Math.max(1, Math.round(b.signals * (1 - pr)));   // 9 成 → 只容許極少失誤
+  G.heartsMax = allowedMiss + 1; G.hearts = G.heartsMax;
+  G.survived = 0; G.bossDur = b.startMs; G.round = { kind:"boss" };
+  $("hudStage").textContent = T("bossTitle");
+  $("timer").classList.remove("hide");
+  updateHud();
+  nextBossSignal();
+}
+async function nextBossSignal(){
+  const b = G.chapter.boss;
+  if(G.hearts <= 0) return bossEnd(false);
+  if(G.survived >= b.signals) return b.word ? bossWord() : bossEnd(true);
+  const ch = b.pool[(Math.random()*b.pool.length)|0];
+  G.bossTarget = ch; G.bossExpected = MORSE[ch]; G.letterBuf = "";
+  showTarget("?"); $("hint").textContent = "收訊中…"; $("readout").textContent = "";
+  G.awaiting = false;
+  await playPattern(MORSE[ch], { incoming:true, freq:760 });
+  $("hint").textContent = T("yourTurn"); G.awaiting = true;
+  startBossTimer();
+}
+function bossElement(sym, dur){
+  if(!G.awaiting) return;
+  G.letterBuf += sym;
+  drawReadout({ kind:"drill" }, G.letterBuf);
+  if(G.letterBuf.length < G.bossExpected.length) return;
+  G.awaiting = false; cancelBossTimer();
+  if(G.letterBuf === G.bossExpected){
+    const left = Math.max(0, G._bossDeadline - performance.now());
+    const frac = G._bossDur ? left / G._bossDur : 0;       // 用掉越少時間 → 比例越高（對長短字母都公平）
+    const speed = Math.round(160 * frac);                  // 速度加成，最多 +160
+    const fast = frac >= 0.6;                              // 夠快 → 跳「迅速」
+    G.combo += 1; G.survived += 1;
+    G.score += 120 + speed + Math.min(G.combo,10)*10;
+    showTarget(G.bossTarget);
+    $("readout").innerHTML = `<span class="ok">${pretty(G.bossExpected)}　${T("received")}${fast ? " " + T("fast") : ""} +${speed}</span>`;
+    updateHud(); setTimeout(nextBossSignal, 360);
+  } else {
+    bossMiss(G.bossExpected.length === 1 ? (G.bossExpected === "." ? T("wantShort") : T("wantLong")) : T("tooSlow"));
+  }
+}
+function bossMiss(msg){
+  cancelBossTimer(); G.awaiting = false; G.combo = 0; G.hearts -= 1;
+  $("timerBar").style.transform = "scaleX(0)";
+  $("readout").innerHTML = `<span class="bad">${msg || T("tooSlow")}</span>`;
+  updateHud(); setTimeout(nextBossSignal, 760);
+}
+function bossWord(){                              // 章末高潮：敲出一個完整的字
+  const b = G.chapter.boss;
+  G.round = { kind:"use", word:b.word, letters:b.word.split(""), boss:true };
+  G.letterBuf = ""; G.wordPtr = 0; G.typed = "";
+  $("timer").classList.add("hide");
+  showWord(b.word); $("hint").textContent = T("sendThis") + b.word; drawReadout(G.round, "");
+  updateHud(); G.awaiting = true;
+}
+function keyTimeOf(m){                              // 敲完這個字母最少需要多久（含元素間隔）
+  let t = 0;
+  for(const c of m) t += (c === "." ? DIT : DAH);
+  return t + Math.max(0, m.length - 1) * DIT;
+}
+function startBossTimer(){
+  cancelBossTimer();
+  // 倒數＝反應緩衝 + 該字母實際敲擊時間 × 寬裕倍率；隨存活數微收緊，但永遠留得下敲完的餘裕
+  const key = keyTimeOf(G.bossExpected || ".");
+  const gen   = Math.max(1.35, 2.3 - G.survived * 0.12);
+  const react = Math.max(350, 750 - G.survived * 45);
+  const dur = Math.round(react + key * gen);
+  G._bossDur = dur;
+  G._bossDeadline = performance.now() + dur;
+  const bar = $("timerBar");
+  const tick = () => {
+    const left = G._bossDeadline - performance.now();
+    bar.style.transform = `scaleX(${Math.max(0, left/dur)})`;
+    if(left <= 0){ G.awaiting = false; return bossMiss(T("tooSlow")); }
+    bossRAF = requestAnimationFrame(tick);
+  };
+  bossRAF = requestAnimationFrame(tick);
+}
+function cancelBossTimer(){ if(bossRAF){ cancelAnimationFrame(bossRAF); bossRAF = null; } }
+
+function bossEnd(won){
+  G.awaiting = false; cancelBossTimer();
+  const s = L().story[G.chapter.id];
+  if(won && G.chapter.finale){ return playReveal(0); }   // 終章：撐過心跳關 → 揭曉序列
+  if(won){
+    G.score += 500;
+    progressSave(G.chapterPtr + 1);                 // 通過本章 → 解鎖下一章
+    const chId = G.chapter.id;
+    storyThen(s.clear, () => openMessageBoard(chId, () => {
+      G.chapterPtr += 1;
+      if(G.chapterPtr < CHAPTERS.length) beginChapter();
+      else showResult(true);                         // 破關到最後才進結果頁＋排行榜
+    }));
+  } else {
+    chapterFail(true);
+  }
+}
+
+// 終章：揭曉序列 → 親手敲出第一個詞 → 結局 → 結果頁
+function playReveal(i){
+  const s = L().story[G.chapter.id];
+  if(i < s.reveal.length){ return storyThen(s.reveal[i], () => playReveal(i + 1)); }
+  finaleSend();
+}
+function finaleSend(){
+  const s = L().story[G.chapter.id], word = G.chapter.firstWord;
+  show("play"); resize(); setEncodeMode(true);
+  G.round = { kind:"use", word, letters:word.split(""), finaleSend:true };
+  G.letterBuf = ""; G.wordPtr = 0; G.typed = ""; G.letterMissed = false;
+  $("hudStage").textContent = ""; $("timer").classList.add("hide");
+  showWord(word); $("hint").textContent = s.sendIntro; drawReadout(G.round, "");
+  G.awaiting = true;
+}
+
+// 闖關失敗：普通段正確率不足，或 boss 心數耗盡 → 顯示失敗、可重試本章
+// 闖關失敗：以劇情呈現失敗後果（不顯示系統字樣）
+// 魔王關失敗 → 可「再挑戰一次」（只重打魔王）或「重新練習整關」；練習階段失敗 → 「再試一次」（重練整關）
+function chapterFail(isBoss){
+  G.awaiting = false; cancelBossTimer();
+  const s = L().story[G.chapter.id];
+  const card = (isBoss && s.failBoss) ? s.failBoss : s.fail;
+  $("failWho").textContent = card.who || "";
+  $("failTitle").textContent = card.title || "";
+  $("failText").textContent = card.text || "";
+  const bossFail = !!isBoss;
+  $("retryBossBtn").style.display = bossFail ? "" : "none";
+  $("retryChapterBtn").textContent = bossFail ? T("retryPractice") : T("retryChapter");
+  show("fail");
+}
+$("retryBossBtn").addEventListener("click", () => { G.score = G.scoreAtBossStart; runBoss(); });      // 只重打魔王
+$("retryChapterBtn").addEventListener("click", () => { G.score = G.scoreAtChapterStart; beginChapter(); }); // 整關重練
+$("toTitleBtn").addEventListener("click", () => show("title"));
+$("exitFree").addEventListener("click", exitFreeplay);
+$("freeBtn").addEventListener("click", startFreeplay);
+$("freeBtnR").addEventListener("click", startFreeplay);
+$("codebookBtn").addEventListener("click", openCodebook);
+$("cbBack").addEventListener("click", () => show("title"));
+$("cbInput").addEventListener("input", cbSearch);
+$("dailyBtn").addEventListener("click", openDaily);
+$("dailyBack").addEventListener("click", () => show("title"));
+
+// ================= 介面語言（文案全走語言包，加語言＝補 PACKS）=================
+function applyLang(){
+  const set = (sel, txt) => { const el = document.querySelector(sel); if(el) el.textContent = txt; };
+  const setAttr = (sel, attr, val) => { const el = document.querySelector(sel); if(el) el.setAttribute(attr, val); };
+  set("#title .eyebrow", T("tagline"));
+  const ledeEl = document.querySelector("#title .lede"); if(ledeEl) ledeEl.innerHTML = T("lede");
+  set("#startBtn", T("start"));
+  set("#soundHint", T("soundHint"));
+  set("#replaySig", T("replaySig"));
+  set("#boardBtn", T("board"));
+  set("#storyNext", T("cont"));
+  set("#key", T("keyIdle"));
+  set(".keytip", T("keyTip"));
+  set("#saveBtn", T("saveScore"));
+  set("#replayBtn", T("replay"));
+  set("#freeBtn", T("freePractice"));
+  set("#freeBtnR", T("freePractice"));
+  set("#codebookBtn", T("codebook"));
+  set("#cbTitle", T("codebook"));
+  set("#cbBack", T("back"));
+  setAttr("#cbInput", "placeholder", T("cbPlaceholder"));
+  set("#dailyBtn", T("daily"));
+  set("#dailyTitle", T("daily"));
+  set("#dailyBack", T("back"));
+  set("#boardBack", T("back"));
+  set("#retryChapterBtn", T("retryChapter"));
+  set("#retryBossBtn", T("retryBoss"));
+  set("#toTitleBtn", T("toTitle"));
+  set("#chaptersBtn", T("selectChapter"));
+  set("#chaptersTitle", T("selectChapter"));
+  set("#chaptersBack", T("back"));
+  set("#chaptersNote", T("chapterHint"));
+  set("#msgPost", T("msgPost"));
+  set("#msgContinue", T("msgContinue"));
+  setAttr("#msgName", "placeholder", T("msgNamePh"));
+  setAttr("#msgText", "placeholder", T("msgTextPh"));
+  const ni = $("nameInput"); if(ni) ni.placeholder = T("enterName");
+  document.querySelectorAll("#langbar .lang").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+}
+
+const LANG_KEY = "ns_lang";
+function setLang(lang){
+  if(!PACKS[lang] || lang === LANG) { if(PACKS[lang]) {} else return; }
+  LANG = lang;
+  try { localStorage.setItem(LANG_KEY, lang); } catch(e) {}
+  applyLang();
+  // 若正停在選關畫面，重畫清單（章名等動態文字）
+  if($("chapters") && $("chapters").classList.contains("on")) renderChapters();
+}
+try { const saved = localStorage.getItem(LANG_KEY); if(saved && PACKS[saved]) LANG = saved; } catch(e) {}
+document.querySelectorAll("#langbar .lang").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+applyLang();
+
+// ================= 結果 + 全球排行榜 =================
+const API = "/api/leaderboard";
+
+function showResult(won){
+  const fin = won && G.chapter && G.chapter.finale ? L().story[G.chapter.id] : null;
+  $("resultEyebrow").textContent = fin ? fin.resultEyebrow : (won ? "RESCUE COMPLETE · 獲救" : "TRANSMISSION LOST · 中斷");
+  $("finalScore").textContent = G.score;
+  $("verdict").textContent = fin ? fin.resultVerdict : (won ? "你把自己敲出了黑夜" : "再敲一次，撐到天亮");
+  $("nameInput").value = "";
+  $("nameInput").disabled = false; $("saveBtn").disabled = false;
+  $("freeBtnR").style.display = (won && gameCleared()) ? "" : "none";   // 通關後出現自由複習入口
+  $("boardNote").textContent = "和全世界的電報員比分數。連不上時會改存在這台裝置。";
+  show("result");
+  loadInto($("resultBoard"), null);
+}
+
+$("saveBtn").addEventListener("click", trySave);
+async function trySave(){
+  if($("saveBtn").disabled) return;
+  const nm = ($("nameInput").value || "").trim().slice(0,12) || "無名電報員";
+  $("nameInput").disabled = true; $("saveBtn").disabled = true;
+  $("resultBoard").innerHTML = `<div class="empty">上傳中…</div>`;
+  const res = await submitScore(nm, G.score);
+  G.lastSaved = res.entry;
+  renderBoard($("resultBoard"), res.board, res.entry && res.entry.id);
+  if(res.offline){ $("boardNote").textContent = "（暫時連不上全球榜，先存在這台裝置；恢復連線後再上榜即可。）"; }
+}
+
+// ---- 後端存取（async），連不上時退回本機 ----
+async function fetchBoard(){
+  try{
+    const r = await fetch(API, { cache:"no-store" });
+    if(!r.ok) throw 0;
+    const data = await r.json();
+    if(Array.isArray(data)){ mirror(data); return { board:data }; }
+    throw 0;
+  }catch(e){ return { board:loadLocal(), offline:true }; }
+}
+async function submitScore(name, score){
+  try{
+    const r = await fetch(API, {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ name, score })
+    });
+    if(!r.ok) throw 0;
+    const data = await r.json();              // {entry, rank, board}
+    mirror(data.board);
+    return data;
+  }catch(e){
+    const entry = { name, score, t:Date.now(), id:"local-"+Date.now() };
+    const b = loadLocal(); b.push(entry); b.sort((a,bb)=>(a.t||0)-(bb.t||0));
+    saveLocal(b.slice(0,500));
+    return { entry, board:b.slice(0,50), offline:true };
+  }
+}
+async function loadInto(el, meId){
+  el.innerHTML = `<div class="empty">載入中…</div>`;
+  const { board } = await fetchBoard();
+  renderBoard(el, board, meId);
+}
+
+// ---- 本機退路（離線 / 沙箱預覽）----
+let memBoard = [];
+let STORAGE_OK = true;
+(function(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }catch(e){ STORAGE_OK=false; } })();
+function loadLocal(){
+  if(!STORAGE_OK) return memBoard.slice();
+  try{ return JSON.parse(localStorage.getItem("ns_board") || "[]"); }catch(e){ return memBoard.slice(); }
+}
+function saveLocal(b){ memBoard=b.slice(); if(STORAGE_OK){ try{ localStorage.setItem("ns_board", JSON.stringify(b)); }catch(e){} } }
+function mirror(board){ if(Array.isArray(board)) saveLocal(board.slice(0,100)); } // 把線上榜快取一份，離線也看得到
+
+function renderBoard(el, board, meId){
+  board = (board || []).slice().sort((a,b)=>(a.t||0)-(b.t||0)).slice(0,20);   // 依破關順序：早的在前
+  if(board.length === 0){ el.innerHTML = `<div class="empty">${T("empty")}</div>`; return; }
+  el.innerHTML = board.map((r,i) => {
+    const isMe = meId && r.id === meId;
+    return `<div class="r ${isMe?"me":""}"><span class="rk">${i+1}</span><span class="nm">${esc(r.name)}</span></div>`;
+  }).join("");
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// ================= 接線 =================
+$("startBtn").addEventListener("click", startGame);
+$("replayBtn").addEventListener("click", startGame);
+$("boardBtn").addEventListener("click", () => {
+  $("boardNote2").textContent = "全球排行榜。連不上時顯示本機快取。";
+  show("boardScreen");
+  loadInto($("pureBoard"), G.lastSaved && G.lastSaved.id);
+});
+$("boardBack").addEventListener("click", () => show("title"));
+$("replaySig").addEventListener("click", replaySignal);
+
+// ================= 章節進度（解鎖／選關）=================
+const PROG_KEY = "ns_progress";
+function progressLoad(){ try{ const v = parseInt(localStorage.getItem(PROG_KEY),10); return Number.isFinite(v) ? v : 0; }catch(e){ return 0; } }
+function progressSave(n){ try{ localStorage.setItem(PROG_KEY, String(Math.max(progressLoad(), n))); }catch(e){} }
+
+function startAtChapter(idx){
+  audioInit(); resize(); bumpPlays();
+  G.score = 0; G.combo = 0; G.lastSaved = null; G.chapterPtr = idx;
+  beginChapter();
+}
+function renderChapters(){
+  const unlocked = progressLoad();                 // 最高已解鎖的章索引
+  const el = $("chapterList"); el.innerHTML = "";
+  CHAPTERS.forEach((ch, i) => {
+    const name = (L().story[ch.id] && L().story[ch.id].name) || ch.id;
+    const open = i <= unlocked;                     // 可進入
+    const cleared = i < unlocked;                    // 已通過
+    const div = document.createElement("div");
+    div.className = "item" + (open ? "" : " locked") + (cleared ? " cleared" : "");
+    div.tabIndex = open ? 0 : -1; div.setAttribute("role","button");
+    const st = open ? (cleared ? T("chapterCleared") : T("chapterPlay")) : ("🔒 " + T("chapterLocked"));
+    div.innerHTML = `<span class="ix">${i===0 ? "序" : (ch.finale ? "終" : i)}</span><span class="nm">${esc(name)}</span><span class="st">${st}</span>`;
+    if(open){
+      const go = () => startAtChapter(i);
+      div.addEventListener("click", go);
+      div.addEventListener("keydown", e => { if(e.key==="Enter" || e.key===" "){ e.preventDefault(); go(); } });
+    }
+    el.appendChild(div);
+  });
+}
+$("chaptersBtn").addEventListener("click", () => { renderChapters(); show("chapters"); });
+$("chaptersBack").addEventListener("click", () => show("title"));
+
+// ================= 每章留言板 =================
+const MSG_API = "/api/messages";
+let msgCh = null, msgGo = null;
+
+function fmtTime(t){
+  const d = new Date(t), p = n => String(n).padStart(2,"0");
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function renderMessages(list){
+  const el = $("msgList");
+  if(!Array.isArray(list) || list.length === 0){ el.innerHTML = `<div class="empty">${T("msgEmpty")}</div>`; return; }
+  el.innerHTML = list.map(m =>
+    `<div class="m"><div class="hd"><span class="nm">${esc(m.name)}</span><span class="tm">${fmtTime(m.t)}</span></div><div class="tx">${esc(m.text)}</div></div>`
+  ).join("");
+}
+function openMessageBoard(chId, onContinue){
+  msgCh = chId; msgGo = onContinue;
+  const name = (L().story[chId] && L().story[chId].name) || "";
+  $("msgTitle").textContent = T("msgBoard");
+  $("msgStatus").textContent = name;
+  $("msgName").value = ""; $("msgText").value = "";
+  $("msgName").disabled = false; $("msgText").disabled = false; $("msgPost").disabled = false;
+  $("msgList").innerHTML = `<div class="empty">…</div>`;
+  show("messages");
+  loadMessages(chId);
+}
+async function loadMessages(chId){
+  try{
+    const r = await fetch(`${MSG_API}?ch=${encodeURIComponent(chId)}`, { cache:"no-store" });
+    if(!r.ok) throw 0;
+    renderMessages(await r.json());
+  }catch(e){
+    $("msgList").innerHTML = `<div class="empty">${T("msgFailLoad")}</div>`;  // 讀不到也能繼續
+  }
+}
+async function postMessage(){
+  const text = ($("msgText").value || "").trim();
+  if(!text){ $("msgText").focus(); return; }
+  const name = ($("msgName").value || "").trim().slice(0,12);
+  $("msgPost").disabled = true; $("msgStatus").textContent = T("msgPosting");
+  try{
+    const r = await fetch(MSG_API, {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ ch:msgCh, name, text })
+    });
+    if(!r.ok) throw 0;
+    const data = await r.json();
+    renderMessages(data.list);
+    $("msgText").value = ""; $("msgText").disabled = true; $("msgName").disabled = true;
+    $("msgStatus").textContent = T("msgPosted");
+  }catch(e){
+    $("msgPost").disabled = false; $("msgStatus").textContent = T("msgFailPost");
+  }
+}
+$("msgPost").addEventListener("click", postMessage);
+$("msgText").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); postMessage(); } });
+$("msgContinue").addEventListener("click", () => { const go = msgGo; msgGo = null; if(go) go(); });
+
+// ================= 累計挑戰人數（>100 才顯示）=================
+const STATS_API = "/api/stats";
+async function refreshStats(){
+  try{
+    const r = await fetch(STATS_API, { cache:"no-store" });
+    if(!r.ok) return;
+    const { plays } = await r.json();
+    const el = $("playsLine");
+    if(typeof plays === "number" && plays > 100){
+      el.textContent = T("challengers").replace("{n}", plays.toLocaleString());
+      el.style.display = "";
+    } else {
+      el.style.display = "none";
+    }
+  }catch(e){ /* 連不上就不顯示，標題照常乾淨 */ }
+}
+function bumpPlays(){
+  // 開新一局 +1，純計數；連不上就算了，不影響遊戲
+  try{ fetch(STATS_API, { method:"POST", keepalive:true }).then(()=>refreshStats()).catch(()=>{}); }
+  catch(e){}
+}
+refreshStats();
+
+resize();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
