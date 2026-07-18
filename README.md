@@ -1,8 +1,19 @@
-# morse-night-signal
+# 夜航電報 · NIGHT SIGNAL
 
-玩遊戲學摩斯電碼 — 夜航電報 · NIGHT SIGNAL
+玩遊戲學摩斯電碼。
 
-線上版：https://morse-night-signal.netlify.app
+## ▶ 立即遊玩
+
+### **https://morse-night-signal.netlify.app**
+
+打開網址就能玩，**免安裝、免註冊**，手機和電腦都可以。
+
+> 海上的夜裡，無線電是你唯一的聲音。
+> 握住電鍵，把求救訊號敲出去——摩斯電碼，會在你手裡慢慢長出來。
+
+🎧 **記得戴耳機或開喇叭**，聲音是這個遊戲的重點。敲出成績還能上全球排行榜。
+
+---
 
 ## 這個 repo 目前有什麼
 
