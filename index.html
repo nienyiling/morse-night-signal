@@ -1805,5 +1805,15 @@ refreshStats();
 resize();
 requestAnimationFrame(draw);
 </script>
+<!-- 到訪回報：把本遊戲的到訪累加進「後院遊樂場」總人次（每個 session 一次） -->
+<script>
+(function(){
+  try {
+    if (sessionStorage.getItem("byp_counted") === "1") return;
+    sessionStorage.setItem("byp_counted", "1");
+    fetch("https://backyard-playground.netlify.app/api/visits", { method: "POST", keepalive: true }).catch(function(){});
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
